@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DITCOIN · Edge Terminal — Polymarket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+  :root{
+    --bg:#0A0C10; --panel:#11141B; --panel2:#161A22; --line:#232A36;
+    --ink:#EAEDF2; --mut:#828B9D; --dim:#5A6373;
+    --gold:#F2B33D; --cyan:#3FBFD6; --rose:#F26D7D; --green:#4ADE80; --violet:#9F8BF0;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.03) 1px,transparent 0);background-size:22px 22px}
+  a{color:var(--cyan);text-decoration:none}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .eyebrow{font:700 11px/1 Archivo,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 18px 80px}
+
+  /* header */
+  header{position:sticky;top:0;z-index:20;background:rgba(10,12,16,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .bar{max-width:1180px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{font:900 20px/1 Archivo,sans-serif;letter-spacing:.02em;display:flex;align-items:center;gap:10px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+  .brand b{color:var(--gold)}
+  .brand small{font:700 10px/1 Archivo,sans-serif;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-left:4px}
+  .grow{flex:1}
+  .status{font:500 12px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--mut);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .status .ok{color:var(--green)} .status .bad{color:var(--rose)}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);max-width:1180px;margin:0 auto;padding:0 18px}
+  .tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;color:var(--mut);
+    font:700 12px/1 Archivo,sans-serif;letter-spacing:.12em;text-transform:uppercase;padding:13px 14px;cursor:pointer}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--ink);border-color:var(--gold)}
+  .tab .n{font-family:"JetBrains Mono",ui-monospace,monospace;color:var(--dim);margin-left:6px;font-size:11px}
+
+  /* controls */
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0 6px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;
+    padding:9px 11px;font:500 13px/1 Inter;outline:none}
+  input:focus,select:focus{border-color:var(--gold)}
+  input::placeholder{color:var(--dim)}
+  .btn{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    font:700 12px/1 Archivo,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:10px 14px;border-radius:8px;cursor:pointer;transition:.12s}
+  .btn:hover{border-color:var(--mut)}
+  .btn.gold{background:var(--gold);color:#1a1206;border-color:var(--gold)}
+  .btn.gold:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn.sm{padding:7px 10px;font-size:11px}
+  label.field{display:flex;flex-direction:column;gap:5px}
+  label.field .eyebrow{margin-left:2px}
+
+  /* cards */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;
+    display:flex;flex-direction:column;gap:12px;animation:fade .35s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .card .q{font:600 15px/1.32 Inter}
+  .meta{display:flex;gap:14px;flex-wrap:wrap;font:500 11px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--mut)}
+  .meta b{color:var(--ink);font-weight:700}
+  .cat{font:700 10px/1 Archivo,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--violet)}
+
+  /* edge meter (signature) */
+  .meter{margin-top:2px}
+  .meter .scale{position:relative;height:30px;border-radius:6px;background:
+    linear-gradient(90deg,rgba(242,109,125,.16),rgba(242,179,61,.10) 50%,rgba(63,191,214,.16));
+    border:1px solid var(--line)}
+  .meter .grid-ticks{position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 25%)}
+  .mk{position:absolute;top:-4px;bottom:-4px;width:2px;transform:translateX(-1px)}
+  .mk.price{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .mk.fair{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+  .edgefill{position:absolute;top:3px;bottom:3px;border-radius:3px;opacity:.5}
+  .meter .tags{display:flex;justify-content:space-between;font:500 10px/1 "JetBrains Mono";color:var(--dim);margin-top:5px}
+  .legend{display:flex;gap:14px;font:500 11px/1 "JetBrains Mono";color:var(--mut);flex-wrap:wrap}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+  .aibox{border-top:1px dashed var(--line);padding-top:11px;display:flex;flex-direction:column;gap:8px}
+  .aibox .row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .big{font:700 22px/1 "JetBrains Mono",ui-monospace,monospace}
+  .edgeval.pos{color:var(--green)} .edgeval.neg{color:var(--rose)} .edgeval.flat{color:var(--mut)}
+  .reason{font:400 12.5px/1.5 Inter;color:var(--mut)}
+  .conf{font:700 10px/1 Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:5px;border:1px solid var(--line)}
+  .conf.high{color:var(--green);border-color:rgba(74,222,128,.4)}
+  .conf.med{color:var(--gold);border-color:rgba(242,179,61,.4)}
+  .conf.low{color:var(--rose);border-color:rgba(242,109,125,.4)}
+
+  /* badges & arb */
+  .badge{font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:6px}
+  .badge.arb{background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.4)}
+  .badge.over{background:rgba(159,139,240,.12);color:var(--violet);border:1px solid rgba(159,139,240,.4)}
+  .arbnum{font:700 26px/1 "JetBrains Mono";color:var(--green)}
+  .legrow{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font:500 12px/1.3 "JetBrains Mono",ui-monospace,monospace}
+  .legrow:last-child{border:0}
+  .legrow .o{color:var(--mut)} .legrow .p{color:var(--ink);font-weight:700}
+
+  /* wallet */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+  .stat{display:flex;flex-direction:column;gap:3px}
+  .stat .v{font:700 20px/1 "JetBrains Mono",ui-monospace,monospace}
+  .stat .k{font:600 11px/1 Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+  table{width:100%;border-collapse:collapse;font:500 12.5px/1.3 "JetBrains Mono",ui-monospace,monospace}
+  th{text-align:left;font:700 10px/1 Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:8px 8px;border-bottom:1px solid var(--line)}
+  td{padding:9px 8px;border-bottom:1px solid var(--line);color:var(--ink)}
+  td.r,th.r{text-align:right}
+  .buy{color:var(--cyan)} .sell{color:var(--rose)} .pos{color:var(--green)} .neg{color:var(--rose)}
+  .chip{font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;padding:3px 7px;border-radius:5px;border:1px solid var(--line);cursor:pointer}
+  .chip:hover{border-color:var(--mut)}
+
+  .empty{text-align:center;color:var(--mut);padding:60px 20px;font:500 14px/1.6 Inter}
+  .empty .eyebrow{display:block;margin-bottom:8px;color:var(--gold)}
+  .errbox{background:rgba(242,109,125,.08);border:1px solid rgba(242,109,125,.4);border-radius:var(--r);padding:14px 16px;color:var(--rose);font:500 13px/1.5 Inter;margin-top:14px}
+  .errbox code{background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px;font-family:"JetBrains Mono",ui-monospace,monospace}
+  .note{font:400 12px/1.6 Inter;color:var(--dim);margin-top:8px}
+  .spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;display:inline-block;animation:sp .7s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+  .foot{margin-top:34px;border-top:1px solid var(--line);padding-top:16px;font:400 11.5px/1.6 Inter;color:var(--dim)}
+</style>
+</head>
+<body>
+<div id="root"><div style="padding:60px 20px;text-align:center;color:#828B9D;font:500 14px Inter,sans-serif">Cargando terminal…</div></div>
+<script>
+window.addEventListener('load',function(){
+  setTimeout(function(){
+    var r=document.getElementById('root');
+    if(typeof React==='undefined'||typeof ReactDOM==='undefined'){
+      r.innerHTML='<div style="padding:50px 22px;color:#F26D7D;font:500 14px/1.6 Inter,sans-serif;max-width:600px;margin:0 auto">No se pudieron cargar las librerías (React/Babel) desde el CDN. Revisa la conexión o la política de contenido del sitio donde lo abres. Si lo ves dentro del visor de Claude, descarga el archivo y ábrelo en el navegador, o súbelo a tu dominio.</div>';
+    }
+  },2500);
+});
+</script>
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef,useCallback}=React;
+const GAMMA="https://gamma-api.polymarket.com";
+const DATA="https://data-api.polymarket.com";
+
+/* curated wallets to monitor constantly (from the all-time PnL leaderboard) */
+const PINNED=[
+  {name:"surfandturf",  addr:"0x9f2fe025f84839ca81dd8e0338892605702d2ca8", note:""},
+  {name:"TheOnlyHuman", addr:"0x6ade597c0e2b43c0bf3542cada8a5e330d73f5b0", note:""},
+  {name:"BWArmageddon", addr:"0x9976874011b081e1e408444c579f48aa5b5967da", note:""},
+  {name:"guongAI",      addr:"0x5bec79df9add70a3892041ab1a5516b60f53b215", note:"high eff."},
+  {name:"benwyatt",     addr:"0x1117eade222413335b7ec959e5b48c1d3dbc3532", note:"high eff."},
+  {name:"Kingdmandan",  addr:"0xb915070c8007b1bdf4b1ef04e56b066a022e8da5", note:""},
+  {name:"elkmonkey",    addr:"0xead152b855effa6b5b5837f53b24c0756830c76a", note:""},
+  {name:"Wannac",       addr:"0xa8e089ade142c95538e06196e09c85681112ad50", note:""},
+  {name:"VPenguin",     addr:"0xfbf3d501e88815464642d0e913f15379c3eeb218", note:""},
+  {name:"denizz",       addr:"0xbaa2bcb5439e985ce4ccf815b4700027d1b92c73", note:""},
+  {name:"bcda",         addr:"0xb45a797faa52b0fd8adc56d30382022b7b12192c", note:"high eff."},
+  {name:"sbsigner",     addr:"0x1b47e9b128e6b671edebfb2cac23dd3efc40d814", note:"high eff."},
+  {name:"stackingsats", addr:"0x7a8885c8dc075f0578b648f29fa233408a7d41cc", note:"high eff."}
+];
+
+/* ---------- helpers ---------- */
+const safeArr=(s)=>{try{return typeof s==="string"?JSON.parse(s):(Array.isArray(s)?s:[])}catch{return []}};
+const num=(x)=>{const n=Number(x);return isFinite(n)?n:0};
+const usd=(n)=>{n=num(n);const a=Math.abs(n);
+  if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M";
+  if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"k";
+  return "$"+n.toFixed(0)};
+const cents=(n)=>(n>=0?"+":"")+(n*100).toFixed(1)+"¢";
+const pct=(n)=>(n>=0?"+":"")+n.toFixed(1)+"%";
+const clamp=(n)=>Math.max(0,Math.min(1,n));
+
+function buildUrl(base,path,proxy){
+  const full=base+path;
+  if(proxy&&proxy.trim()) return proxy.trim().replace(/\/$/,"")+"?url="+encodeURIComponent(full);
+  return full;
+}
+async function getJSON(base,path,proxy){
+  const r=await fetch(buildUrl(base,path,proxy));
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+
+/* AI endpoint: default works ONLY inside the Claude.ai artifact viewer.
+   For self-hosting, set an AI proxy (e.g. /api/ai) in Setup — see api/ai.js. */
+let AI_ENDPOINT="https://api.anthropic.com/v1/messages";
+try{ const a=localStorage.getItem("pm_ai"); if(a) AI_ENDPOINT=a; }catch(e){}
+
+/* ---------- shared Claude call: timeout + auto-fallback (no infinite spinner) ---------- */
+async function callClaude(system,userText,tools,timeoutMs){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),timeoutMs||40000);
+  try{
+    const r=await fetch(AI_ENDPOINT,{method:"POST",
+      headers:{"Content-Type":"application/json"},signal:ctrl.signal,
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system,
+        messages:[{role:"user",content:userText}],
+        ...(tools?{tools:[{type:"web_search_20250305",name:"web_search"}]}:{})})});
+    if(!r.ok){ let t=""; try{t=(await r.text()).slice(0,120)}catch(e){} throw new Error("HTTP "+r.status+(t?" "+t:"")); }
+    const d=await r.json();
+    return (d.content||[]).map(b=>b.type==="text"?b.text:"").join("\n");
+  } finally { clearTimeout(timer); }
+}
+function extractJSON(text){ const m=(text||"").match(/\{[\s\S]*\}/); if(!m) throw new Error("model returned no JSON"); return JSON.parse(m[0]); }
+// try WITH web search (capped); if it stalls/fails/returns no JSON, fall back to a fast no-tools call
+async function claudeJSON(system,userText){
+  try{ return extractJSON(await callClaude(system,userText,true,30000)); }
+  catch(e){
+    try{ return extractJSON(await callClaude(system,userText,false,25000)); }
+    catch(e2){
+      const m=String(e2.message||e2);
+      if(AI_ENDPOINT.indexOf("anthropic.com")>=0)
+        throw new Error("the built-in AI only runs inside Claude.ai. On your own site, set an AI proxy (/api/ai) in Setup. ["+m+"]");
+      throw new Error(m);
+    }
+  }
+}
+
+/* ---------- Anthropic fair-value call (Claude-in-Claude) ---------- */
+async function estimateFair(m){
+  const sys="You are a prediction-market analyst. Estimate the true probability that the market resolves YES, using web search for current facts when useful. Reply with ONLY a JSON object, no prose, no markdown fences: {\"fair\":0..1,\"confidence\":\"low|med|high\",\"reason\":\"<=45 words\",\"clear\":true|false}. 'clear' = whether resolution criteria are unambiguous. Be calibrated; if you lack current info say confidence low.";
+  const u=`Market: ${m.q}\nResolves: ${m.endDate||"unknown"}\nCurrent YES price (market-implied prob): ${(m.yes*100).toFixed(1)}%\n24h volume: ${usd(m.vol)}`;
+  const j=await claudeJSON(sys,u);
+  return {fair:clamp(num(j.fair)),confidence:(j.confidence||"low").toLowerCase(),
+    reason:String(j.reason||""),clear:!!j.clear};
+}
+
+/* ---------- Anthropic wallet copy-analysis (concise, movement-focused) ---------- */
+async function analyzeWalletAI(d){
+  const sys="You are a copy-trading analyst. Look at this Polymarket wallet's recent MOVES (latest trades) and open positions, and tell the user only what matters to copy. Use web search to check fresh news on the markets they're betting. Reply with ONLY a JSON object, no prose, no fences: {\"verdict\":\"copy|selective|avoid\",\"summary\":\"<=28 words: what this wallet is doing right now and whether it's worth following\",\"moves\":[{\"market\":\"short name\",\"side\":\"Yes/No/outcome\",\"now\":0.00,\"action\":\"copy|watch|skip\",\"why\":\"<=16 words\"}]}. moves = max 3, only the most actionable current bets (favor ones still near entry with room; mark already-resolved/extreme ones skip). Keep it tight.";
+  const pos=(d.positions||[]).slice(0,12).map(p=>`${p.title} | ${p.outcome} | val ${usd(num(p.currentValue))} | avg ${num(p.avgPrice).toFixed(2)} now ${num(p.curPrice).toFixed(2)} | pnl ${num(p.percentPnl).toFixed(0)}%`).join("\n");
+  const tr=(d.acts||[]).slice(0,15).map(t=>`${(t.side||"").toUpperCase()} ${t.outcome} @ ${num(t.price).toFixed(2)} | ${usd(num(t.usdcSize)||num(t.size)*num(t.price))} | ${t.title||""}`).join("\n");
+  const u=`Wallet ${d.w}\nOpen value ${usd(d.value)} | open cash pnl ${usd(d.cashPnl)} | ${(d.positions||[]).length} positions\n\nLATEST MOVES (most recent first):\n${tr||"(none)"}\n\nOPEN POSITIONS:\n${pos||"(none)"}`;
+  return await claudeJSON(sys,u);
+}
+
+/* ---------- Edge meter ---------- */
+function Meter({price,fair}){
+  const p=clamp(price);
+  const f=fair==null?null:clamp(fair);
+  const lo=f==null?p:Math.min(p,f), hi=f==null?p:Math.max(p,f);
+  return (
+    <div className="meter">
+      <div className="scale">
+        <div className="grid-ticks"/>
+        {f!=null&&<div className="edgefill" style={{left:(lo*100)+"%",width:((hi-lo)*100)+"%",
+          background:(f>=p?"var(--green)":"var(--rose)")}}/>}
+        <div className="mk price" style={{left:(p*100)+"%"}}/>
+        {f!=null&&<div className="mk fair" style={{left:(f*100)+"%"}}/>}
+      </div>
+      <div className="tags"><span>0%</span><span>50%</span><span>100%</span></div>
+    </div>
+  );
+}
+
+/* ---------- Market card ---------- */
+function MarketCard({m,ai,busy,onRun}){
+  const edge=ai?ai.fair-m.yes:null;
+  const ec=edge==null?"flat":(Math.abs(edge)<0.03?"flat":(edge>0?"pos":"neg"));
+  return (
+    <div className="card">
+      <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
+        <span className="cat">{m.cat||"market"}</span>
+        <a className="cat" style={{color:"var(--dim)"}} href={"https://polymarket.com/event/"+(m.slug||"")} target="_blank" rel="noopener">open ↗</a>
+      </div>
+      <div className="q">{m.q}</div>
+      <div className="meta">
+        <span>YES <b>{(m.yes*100).toFixed(1)}%</b></span>
+        <span>vol <b>{usd(m.vol)}</b></span>
+        <span>liq <b>{usd(m.liq)}</b></span>
+        {m.endDate&&<span>ends <b>{m.endDate.slice(0,10)}</b></span>}
+      </div>
+      <Meter price={m.yes} fair={ai?ai.fair:null}/>
+      <div className="aibox">
+        {!ai&&!busy&&<button className="btn gold sm" onClick={onRun} style={{alignSelf:"flex-start"}}>Run AI fair value</button>}
+        {busy&&<div className="reason"><span className="spin"/> searching &amp; estimating…</div>}
+        {ai&&<>
+          <div className="row">
+            <span className={"big edgeval "+ec}>{cents(edge)}</span>
+            <span className="eyebrow">edge (fair − price)</span>
+            <span className={"conf "+ai.confidence}>{ai.confidence} conf</span>
+            {!ai.clear&&<span className="conf low">fuzzy rules</span>}
+          </div>
+          <div className="meta"><span>AI fair <b>{(ai.fair*100).toFixed(1)}%</b></span><span>mkt <b>{(m.yes*100).toFixed(1)}%</b></span></div>
+          <div className="reason">{ai.reason}</div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- App ---------- */
+function App(){
+  const [tab,setTab]=useState("mis");
+  const [proxy,setProxy]=useState(()=>{try{return localStorage.getItem("pm_proxy")||""}catch(e){return ""}});
+  const [markets,setMarkets]=useState([]);
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState("");
+  const [updated,setUpdated]=useState(null);
+  const [minVol,setMinVol]=useState(50000);
+  const [search,setSearch]=useState("");
+  const [ai,setAi]=useState({});       // id -> result
+  const [busy,setBusy]=useState({});    // id -> bool
+
+  const load=useCallback(async()=>{
+    setLoading(true);setErr("");
+    try{
+      const raw=await getJSON(GAMMA,"/markets?active=true&closed=false&archived=false&limit=250",proxy);
+      const list=(Array.isArray(raw)?raw:[]).map(m=>{
+        const outs=safeArr(m.outcomes), prices=safeArr(m.outcomePrices).map(num);
+        let yi=outs.findIndex(o=>/^yes$/i.test(String(o).trim())); if(yi<0)yi=0;
+        const ev=(m.events&&m.events[0])||{};
+        return {
+          id:String(m.id||m.conditionId||m.slug),
+          q:m.question||m.title||"—",
+          slug:ev.slug||m.slug||"",
+          cat:m.category||ev.title||"",
+          outs,prices,
+          yes: prices.length?clamp(prices[yi]):0.5,
+          binary: outs.length===2,
+          vol:num(m.volume24hr)||num(m.volumeNum)||num(m.volume),
+          liq:num(m.liquidityNum)||num(m.liquidity),
+          endDate:m.endDate||m.end_date||"",
+          eventId:ev.id?String(ev.id):null,
+          eventTitle:ev.title||"",
+          groupTitle:m.groupItemTitle||""
+        };
+      }).filter(m=>m.prices.length>=2);
+      setMarkets(list);setUpdated(new Date());
+    }catch(e){
+      setErr("Couldn't reach the Polymarket Gamma API directly — almost always browser CORS. Set an API proxy below (a 12-line Vercel function), then refresh. ["+e.message+"]");
+    }finally{setLoading(false)}
+  },[proxy]);
+
+  useEffect(()=>{load()},[]);// initial
+  useEffect(()=>{try{localStorage.setItem("pm_proxy",proxy)}catch(e){}},[proxy]);// remember proxy
+
+  const filtered=useMemo(()=>markets
+    .filter(m=>m.vol>=minVol)
+    .filter(m=>!search||m.q.toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>b.vol-a.vol),[markets,minVol,search]);
+
+  // mispricing list: prefer scanned (has AI) sorted by |edge|, else by volume
+  const misList=useMemo(()=>{
+    return [...filtered].sort((a,b)=>{
+      const ea=ai[a.id]?Math.abs(ai[a.id].fair-a.yes):-1;
+      const eb=ai[b.id]?Math.abs(ai[b.id].fair-b.yes):-1;
+      if(ea!==eb)return eb-ea;
+      return b.vol-a.vol;
+    });
+  },[filtered,ai]);
+
+  const runAI=async(m)=>{
+    setBusy(b=>({...b,[m.id]:true}));
+    try{ const r=await estimateFair(m); setAi(a=>({...a,[m.id]:r})); }
+    catch(e){ setAi(a=>({...a,[m.id]:{fair:m.yes,confidence:"low",reason:"AI estimate failed: "+e.message,clear:true}})); }
+    finally{ setBusy(b=>({...b,[m.id]:false})); }
+  };
+  const scanTop=async()=>{
+    const targets=misList.slice(0,8).filter(m=>!ai[m.id]&&!busy[m.id]);
+    for(const m of targets){ await runAI(m); } // sequential = gentle on rate limits
+  };
+
+  // smart money: which pinned top wallets hold each market (title-matched)
+  const [smart,setSmart]=useState({});
+  const [smScan,setSmScan]=useState(false);
+  const scanSmart=async()=>{
+    setSmScan(true);
+    const map={};
+    for(const p of PINNED){
+      try{
+        const pos=await getJSON(DATA,"/positions?user="+p.addr+"&sizeThreshold=1&limit=100",proxy);
+        (Array.isArray(pos)?pos:[]).forEach(x=>{
+          const t=String(x.title||"").toLowerCase().trim(); if(!t)return;
+          (map[t]=map[t]||{}); map[t][p.name]=String(x.outcome||"");
+        });
+      }catch(e){/* skip wallet */}
+    }
+    setSmart(map); setSmScan(false);
+  };
+  const smFor=(l)=>{ const k=String(l.q||"").toLowerCase().trim(), k2=String(l.groupTitle||"").toLowerCase().trim();
+    return smart[k]||smart[k2]||null; };
+
+  // arbitrage: group mutually-exclusive markets by eventId, sum YES prices
+  const arbGroups=useMemo(()=>{
+    const by={};
+    markets.forEach(m=>{ if(!m.eventId||!m.binary)return; (by[m.eventId]=by[m.eventId]||{title:m.eventTitle,legs:[]}).legs.push(m); });
+    return Object.values(by)
+      .filter(g=>g.legs.length>=2)
+      .map(g=>{
+        const sum=g.legs.reduce((s,l)=>s+l.yes,0);
+        const vol=g.legs.reduce((s,l)=>s+l.vol,0);
+        return {...g,sum,vol,ret: sum>0?(1/sum-1):0};
+      })
+      .filter(g=>g.vol>=minVol && (g.sum<0.985||g.sum>1.015))
+      .sort((a,b)=>Math.abs(b.sum-1)-Math.abs(a.sum-1))
+      .slice(0,30);
+  },[markets,minVol]);
+
+  return (<>
+    <header>
+      <div className="bar">
+        <div className="brand"><span className="dot"/>DIT<b>EDGE</b><small>terminal</small></div>
+        <div className="grow"/>
+        <div className="status">
+          <span>{markets.length} mkts</span>
+          {updated&&<span>upd {updated.toLocaleTimeString()}</span>}
+          <span className={err?"bad":"ok"}>{err?"● proxy needed":"● live"}</span>
+        </div>
+        <button className="btn sm" onClick={load} disabled={loading}>{loading?"…":"↻ refresh"}</button>
+      </div>
+      <div className="tabs">
+        <button className={"tab"+(tab==="mis"?" on":"")} onClick={()=>setTab("mis")}>Mispricing<span className="n">{Object.keys(ai).length}</span></button>
+        <button className={"tab"+(tab==="arb"?" on":"")} onClick={()=>setTab("arb")}>Arbitrage<span className="n">{arbGroups.length}</span></button>
+        <button className={"tab"+(tab==="wal"?" on":"")} onClick={()=>setTab("wal")}>Copy wallets</button>
+        <button className={"tab"+(tab==="set"?" on":"")} onClick={()=>setTab("set")}>Setup</button>
+      </div>
+    </header>
+
+    <div className="wrap">
+      {err&&<div className="errbox">{err}</div>}
+
+      {tab==="mis"&&<>
+        <div className="controls">
+          <input placeholder="filter markets…" value={search} onChange={e=>setSearch(e.target.value)} style={{flex:"1 1 200px"}}/>
+          <select value={minVol} onChange={e=>setMinVol(num(e.target.value))}>
+            <option value={0}>any volume</option>
+            <option value={50000}>vol &gt; $50k</option>
+            <option value={250000}>vol &gt; $250k</option>
+            <option value={1000000}>vol &gt; $1M</option>
+          </select>
+          <button className="btn gold" onClick={scanTop}>⚡ Scan top 8 with AI</button>
+        </div>
+        <div className="legend">
+          <span><i style={{background:"var(--cyan)"}}/>market price</span>
+          <span><i style={{background:"var(--gold)"}}/>AI fair value</span>
+          <span><i style={{background:"var(--green)"}}/>YES looks cheap</span>
+          <span><i style={{background:"var(--rose)"}}/>YES looks rich</span>
+        </div>
+        {filtered.length===0&&!loading&&<div className="empty"><span className="eyebrow">no markets</span>Lower the volume filter or set a proxy in Setup, then refresh.</div>}
+        <div className="grid">
+          {misList.slice(0,40).map(m=><MarketCard key={m.id} m={m} ai={ai[m.id]} busy={busy[m.id]} onRun={()=>runAI(m)}/>)}
+        </div>
+        <p className="note">“Edge” is the AI’s probability estimate minus the market price. It is a hypothesis, not a guarantee — the market is often right and you’re paying spread + gas to find out. Treat large edges on fuzzy-rules markets with suspicion.</p>
+      </>}
+
+      {tab==="arb"&&<>
+        <div className="controls">
+          <span className="eyebrow">mutually-exclusive event groups whose YES prices don’t sum to $1.00</span>
+          <div className="grow"/>
+          <button className="btn gold sm" onClick={scanSmart} disabled={smScan}>{smScan?"scanning…":"🐋 Check smart money"}</button>
+        </div>
+        {arbGroups.length===0&&<div className="empty"><span className="eyebrow">no candidates</span>No event groups with a meaningful over/under-round at this volume filter. Real arb is rare and short-lived.</div>}
+        <div className="grid">
+          {arbGroups.map((g,i)=>{
+            const under=g.sum<1;
+            const groupSmart=g.legs.some(l=>smFor(l));
+            return <div className="card" key={i}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+                <span className={"badge "+(under?"arb":"over")}>{under?"under-round":"over-round"}</span>
+                <span className="mono" style={{color:"var(--mut)"}}>{usd(g.vol)} vol</span>
+              </div>
+              <div className="q">{g.title||"event group"}</div>
+              {groupSmart&&<span className="badge" style={{background:"rgba(63,191,214,.12)",color:"var(--cyan)",border:"1px solid rgba(63,191,214,.4)",alignSelf:"flex-start"}}>🐋 smart money in</span>}
+              <div className="row" style={{display:"flex",alignItems:"baseline",gap:12}}>
+                <span className="arbnum" style={{color:under?"var(--green)":"var(--violet)"}}>Σ {(g.sum).toFixed(3)}</span>
+                <span className="eyebrow">sum of YES prices</span>
+              </div>
+              {under&&<div className="meta"><span>buy every YES → one pays $1 → <b style={{color:"var(--green)"}}>{pct(g.ret*100)}</b> gross if exhaustive</span></div>}
+              <div>
+                {g.legs.sort((a,b)=>b.yes-a.yes).slice(0,8).map((l,j)=>{
+                  const sm=smFor(l);
+                  return <div className="legrow" key={j}>
+                    <span className="o">{l.groupTitle||l.q}{sm&&<span style={{color:"var(--cyan)",fontFamily:"Inter",fontSize:10,marginLeft:6}}>🐋 {Object.keys(sm).slice(0,3).join(", ")}</span>}</span>
+                    <span className="p mono">{(l.yes*100).toFixed(1)}%</span>
+                  </div>;
+                })}
+              </div>
+            </div>;
+          })}
+        </div>
+        <p className="note"><b>🐋 smart money</b> = one of your pinned top wallets already holds that outcome (matched by market name after “Check smart money”). It’s confirmation that sharp traders see value there — not proof the arb is real. <b>Read before trading:</b> a sum &lt; $1.00 is only true arbitrage if the outcomes are <i>mutually exclusive AND collectively exhaustive</i> — many Polymarket groups have an unlisted “other / none” outcome, which breaks it. You also need to fill every leg at the ask (not the mid shown) before it moves, and clear gas + spread. Verify on the market page before assuming free money.</p>
+      </>}
+
+      {tab==="wal"&&<WalletTab proxy={proxy}/>}
+
+      {tab==="set"&&<Setup proxy={proxy} setProxy={setProxy} onSaved={load}/>}
+
+      <div className="foot">
+        Data: Polymarket Gamma + Data API (public, no key). AI fair value: Claude (Sonnet) with web search, running client-side.
+        Built for isditcoin.xyz. Not financial advice — prediction markets are speculative and you can lose your full stake.
+      </div>
+    </div>
+  </>);
+}
+
+/* classify an open position by how copyable it is right now */
+function copyTag(p){
+  const avg=num(p.avgPrice), cur=num(p.curPrice);
+  if(cur>=0.92) return {t:"LATE",col:"var(--rose)",why:"≥0.92 — mostly played out, little upside"};
+  const d=cur-avg;
+  if(Math.abs(d)<=0.05) return {t:"COPY",col:"var(--green)",why:"price ≈ their entry — you can still join near their cost"};
+  if(d>0) return {t:"RIDE",col:"var(--gold)",why:"moved up since they entered — costlier to join now"};
+  return {t:"DIP",col:"var(--cyan)",why:"below their entry — copying = betting it recovers"};
+}
+const TAGORDER={COPY:0,RIDE:1,DIP:2,LATE:3};
+
+/* ---------- Position sizing (fractional Kelly) ---------- */
+function SizingTool({seed}){
+  const [bank,setBank]=useState(1000);
+  const [q,setQ]=useState(60);
+  const [p,setP]=useState(50);
+  const [frac,setFrac]=useState(0.25);
+  useEffect(()=>{ if(seed&&seed.price!=null) setP(seed.price); },[seed]);
+  const qq=clamp(q/100), pp=clamp(p/100);
+  const edge=qq-pp;
+  const kelly=(pp>0&&pp<1)?(qq-pp)/(1-pp):0;
+  const f=Math.max(0,kelly)*frac;
+  const stake=bank*f, shares=pp>0?stake/pp:0, profit=shares*(1-pp);
+  return (
+    <div className="panel" style={{marginTop:14}} id="sizing">
+      <div className="eyebrow" style={{marginBottom:10,color:"var(--gold)"}}>Position sizing — fractional Kelly</div>
+      <div className="controls" style={{margin:0,flexWrap:"wrap"}}>
+        <label className="field"><span className="eyebrow">bankroll $</span><input type="number" value={bank} onChange={e=>setBank(num(e.target.value))} style={{width:120}}/></label>
+        <label className="field"><span className="eyebrow">your win prob %</span><input type="number" value={q} onChange={e=>setQ(num(e.target.value))} style={{width:120}}/></label>
+        <label className="field"><span className="eyebrow">entry price ¢</span><input type="number" value={p} onChange={e=>setP(num(e.target.value))} style={{width:120}}/></label>
+        <label className="field"><span className="eyebrow">kelly fraction</span>
+          <select value={frac} onChange={e=>setFrac(num(e.target.value))}>
+            <option value={1}>full</option><option value={0.5}>half</option><option value={0.25}>quarter</option><option value={0.1}>tenth</option>
+          </select></label>
+      </div>
+      <div className="panel" style={{display:"flex",gap:28,flexWrap:"wrap",marginTop:12,background:"var(--bg)"}}>
+        {edge<=0
+          ? <div className="reason" style={{color:"var(--rose)",margin:0}}>No edge: your win probability isn’t above the entry price, so Kelly says don’t take this bet.</div>
+          : <React.Fragment>
+            <div className="stat"><span className="v mono" style={{color:"var(--gold)"}}>{usd(stake)}</span><span className="k">suggested stake</span></div>
+            <div className="stat"><span className="v mono">{shares.toFixed(0)}</span><span className="k">shares @ {pp.toFixed(2)}</span></div>
+            <div className="stat"><span className="v mono pos">+{usd(profit)}</span><span className="k">profit if it wins</span></div>
+            <div className="stat"><span className="v mono">{(f*100).toFixed(1)}%</span><span className="k">of bankroll</span></div>
+          </React.Fragment>}
+      </div>
+      <p className="note" style={{marginTop:8}}>Kelly f* = (your win prob − price) ÷ (1 − price). Full Kelly is aggressive and assumes your probability is exactly right — use <b>quarter</b> or less when copying, since a copied edge estimate is noisy. This is math, not advice.</p>
+    </div>
+  );
+}
+
+/* ---------- Wallet copy tab ---------- */
+function WalletTab({proxy}){
+  const [addr,setAddr]=useState("");
+  const [data,setData]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState("");
+  const [watch,setWatch]=useState([]);
+  const [lb,setLb]=useState([]);
+  const [lbLoading,setLbLoading]=useState(false);
+  const [lbErr,setLbErr]=useState("");
+  const [cat,setCat]=useState("OVERALL");
+  const [period,setPeriod]=useState("ALL");
+  const [pinStats,setPinStats]=useState({});
+  const [pinScanning,setPinScanning]=useState(false);
+  const [consensus,setConsensus]=useState([]);
+  const [newEntries,setNewEntries]=useState([]);
+  const [lastScan,setLastScan]=useState(null);
+  const [autoMin,setAutoMin]=useState(()=>{try{return num(localStorage.getItem("pm_auto"))||0}catch(e){return 0}});
+  const [aiW,setAiW]=useState({});
+  const [aiWBusy,setAiWBusy]=useState(false);
+  const [seed,setSeed]=useState(null);
+  const [showRaw,setShowRaw]=useState(false);
+  const sizeThis=(price)=>{ setSeed({price:Math.round(clamp(price)*100),n:Date.now()});
+    try{document.getElementById("sizing").scrollIntoView({behavior:"smooth",block:"center"})}catch(e){} };
+
+  const runWalletAI=async(d0)=>{
+    const d=d0||data; if(!d)return; setAiWBusy(true);
+    try{ const r=await analyzeWalletAI(d); setAiW(m=>({...m,[d.w]:r})); }
+    catch(e){ setAiW(m=>({...m,[d.w]:{error:e.message}})); }
+    finally{setAiWBusy(false)}
+  };
+
+  const scanPinned=async()=>{
+    setPinScanning(true);
+    let prevSnap={}; try{prevSnap=JSON.parse(localStorage.getItem("pm_snap")||"{}")}catch(e){}
+    const conMap={}, snap={}, fresh=[];
+    for(const p of PINNED){
+      try{
+        const [pos,lbRow]=await Promise.all([
+          getJSON(DATA,"/positions?user="+p.addr+"&sizeThreshold=1&sortBy=CURRENT&sortDirection=DESC&limit=100",proxy),
+          getJSON(DATA,"/v1/leaderboard?user="+p.addr+"&timePeriod=ALL&limit=1",proxy).catch(()=>[])
+        ]);
+        const arr=Array.isArray(pos)?pos:[];
+        const top=arr[0];
+        const lb=(Array.isArray(lbRow)&&lbRow[0])||{};
+        const pnlAll=num(lb.pnl), volAll=num(lb.vol);
+        setPinStats(m=>({...m,[p.addr]:{
+          value:arr.reduce((s,x)=>s+num(x.currentValue),0),
+          cashPnl:arr.reduce((s,x)=>s+num(x.cashPnl),0),
+          count:arr.length,
+          pnlAll: lb.pnl!=null?pnlAll:null,
+          eff: volAll>0?pnlAll/volAll:null,
+          top:top?((top.title||"—")+" · "+(top.outcome||"")):"—"
+        }}));
+        // new-position detection vs previous snapshot
+        const keys=arr.map(x=>String(x.title||"").trim()+"||"+String(x.outcome||"").trim());
+        snap[p.addr]=keys;
+        const seen=new Set(prevSnap[p.addr]||[]);
+        if(prevSnap[p.addr]) arr.forEach((x,i)=>{ if(!seen.has(keys[i])&&x.title)
+          fresh.push({trader:p.name,market:x.title,outcome:x.outcome,price:num(x.curPrice),value:num(x.currentValue)}); });
+        // consensus accumulation
+        arr.forEach(x=>{
+          const title=String(x.title||"").trim(), outcome=String(x.outcome||"").trim();
+          if(!title) return;
+          const k=title+"||"+outcome;
+          (conMap[k]=conMap[k]||{market:title,outcome,holders:[]}).holders.push(
+            {name:p.name,value:num(x.currentValue),pnl:num(x.percentPnl),price:num(x.curPrice)});
+        });
+      }catch(e){ setPinStats(m=>({...m,[p.addr]:{err:true}})); }
+    }
+    const con=Object.values(conMap)
+      .filter(c=>c.holders.length>=2)
+      .map(c=>({...c,n:c.holders.length,total:c.holders.reduce((s,h)=>s+h.value,0),price:c.holders[0].price}))
+      .sort((a,b)=>b.n-a.n||b.total-a.total).slice(0,20);
+    setConsensus(con);
+    setNewEntries(fresh.sort((a,b)=>b.value-a.value).slice(0,25));
+    try{localStorage.setItem("pm_snap",JSON.stringify(snap))}catch(e){}
+    setLastScan(new Date()); setPinScanning(false);
+  };
+
+  // composite copy-score (0-100), recomputed in render so it updates after AI analysis
+  const scoreOf=(addr)=>{
+    const s=pinStats[addr]; if(!s||s.err) return null;
+    const a=aiW[addr]; const parts=[],w=[];
+    if(s.eff!=null){ parts.push(clamp(s.eff)); w.push(0.45); }
+    if(a&&a.verdict){ const mp={strong:1,selective:0.7,caution:0.4,avoid:0.1}; parts.push(mp[a.verdict]!=null?mp[a.verdict]:0.5); w.push(0.35); }
+    if(s.pnlAll!=null){ parts.push(clamp(s.pnlAll/300000)); w.push(0.20); }
+    if(!parts.length) return null;
+    const ws=w.reduce((x,y)=>x+y,0)||1;
+    return Math.round(parts.reduce((x,v,i)=>x+v*w[i],0)/ws*100);
+  };
+  const pinnedSorted=[...PINNED].sort((a,b)=>(scoreOf(b.addr)||-1)-(scoreOf(a.addr)||-1));
+
+  // auto-refresh the monitor
+  useEffect(()=>{
+    try{localStorage.setItem("pm_auto",String(autoMin))}catch(e){}
+    if(!autoMin) return;
+    const id=setInterval(()=>{ if(!pinScanning) scanPinned(); }, autoMin*60000);
+    return ()=>clearInterval(id);
+  },[autoMin,pinScanning]);
+
+  const loadLB=async()=>{
+    setLbLoading(true);setLbErr("");
+    try{
+      const r=await getJSON(DATA,"/v1/leaderboard?orderBy=PNL&timePeriod="+period+"&category="+cat+"&limit=25",proxy);
+      setLb(Array.isArray(r)?r:[]);
+    }catch(e){ setLbErr("Couldn't load leaderboard — likely CORS. Add a proxy in Setup. ["+e.message+"]"); }
+    finally{setLbLoading(false)}
+  };
+  useEffect(()=>{loadLB()},[cat,period]);// reload on filter change
+
+  const lookup=async(a)=>{
+    const w=(a||addr).trim();
+    if(!/^0x[0-9a-fA-F]{40}$/.test(w)){setErr("Enter a valid 0x… wallet address (the proxy/Safe address works too).");return;}
+    setLoading(true);setErr("");setData(null);
+    try{
+      const [pos,act]=await Promise.all([
+        getJSON(DATA,"/positions?user="+w+"&sizeThreshold=1&sortBy=CURRENT&sortDirection=DESC&limit=50",proxy).catch(()=>[]),
+        getJSON(DATA,"/activity?user="+w+"&limit=40&type=TRADE",proxy).catch(()=>[])
+      ]);
+      const positions=Array.isArray(pos)?pos:[];
+      const acts=Array.isArray(act)?act:[];
+      const value=positions.reduce((s,p)=>s+num(p.currentValue),0);
+      const cashPnl=positions.reduce((s,p)=>s+num(p.cashPnl),0);
+      const d={w,positions,acts,value,cashPnl};
+      setData(d);
+      if(!watch.includes(w)) setWatch(x=>[w,...x].slice(0,8));
+      if(!aiW[w]) runWalletAI(d);// auto-analyze the wallet's moves on open
+    }catch(e){ setErr("Lookup failed — likely CORS. Add a proxy in Setup. ["+e.message+"]"); }
+    finally{setLoading(false)}
+  };
+
+  return (<>
+    <div className="controls">
+      <input placeholder="0x… wallet to copy" value={addr} onChange={e=>setAddr(e.target.value)} style={{flex:"1 1 320px",fontFamily:"JetBrains Mono"}}/>
+      <button className="btn gold" onClick={()=>lookup()} disabled={loading}>{loading?"…":"Pull positions"}</button>
+    </div>
+    {watch.length>0&&<div className="controls" style={{marginTop:2}}>
+      <span className="eyebrow">watchlist:</span>
+      {watch.map(w=><span className="chip mono" key={w} onClick={()=>{setAddr(w);lookup(w);}}>{w.slice(0,6)}…{w.slice(-4)}</span>)}
+    </div>}
+
+    <div className="panel" style={{marginTop:14}}>
+      <div className="controls" style={{margin:0,marginBottom:10}}>
+        <span className="eyebrow" style={{color:"var(--gold)"}}>Watchlist · {PINNED.length} pinned wallets</span>
+        <div className="grow"/>
+        {lastScan&&<span className="mono" style={{color:"var(--dim)",fontSize:11}}>scanned {lastScan.toLocaleTimeString()}</span>}
+        <select value={autoMin} onChange={e=>setAutoMin(num(e.target.value))} title="auto-refresh">
+          <option value={0}>auto: off</option><option value={2}>every 2m</option>
+          <option value={5}>every 5m</option><option value={15}>every 15m</option>
+        </select>
+        <button className="btn gold sm" onClick={scanPinned} disabled={pinScanning}>{pinScanning?"scanning…":"⚡ Scan all"}</button>
+      </div>
+      <table>
+        <thead><tr><th className="r">score</th><th>trader</th><th className="r">eff.</th><th className="r">open value</th><th className="r">open pnl</th><th className="r">pos</th><th>biggest bet</th><th className="r"></th></tr></thead>
+        <tbody>{pinnedSorted.map(p=>{
+          const s=pinStats[p.addr]; const sc=scoreOf(p.addr);
+          const scol=sc==null?"var(--dim)":(sc>=70?"var(--green)":sc>=45?"var(--gold)":"var(--rose)");
+          return <tr key={p.addr}>
+            <td className="r mono" style={{fontWeight:700,color:scol}}>{sc==null?"—":sc}</td>
+            <td>{p.name}{p.note?<span style={{color:"var(--gold)",fontSize:10,marginLeft:6}}>{p.note}</span>:null}</td>
+            <td className="r" style={{color:s&&!s.err&&s.eff!=null&&s.eff>=0.5?"var(--gold)":"var(--mut)"}}>{s&&!s.err&&s.eff!=null?(s.eff*100).toFixed(0)+"%":"—"}</td>
+            <td className="r">{s&&!s.err?usd(s.value):(pinScanning?"…":"—")}</td>
+            <td className={"r "+(s&&!s.err?(s.cashPnl>=0?"pos":"neg"):"")}>{s&&!s.err?((s.cashPnl>=0?"+":"")+usd(s.cashPnl)):"—"}</td>
+            <td className="r" style={{color:"var(--mut)"}}>{s&&!s.err?s.count:"—"}</td>
+            <td style={{maxWidth:240,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"var(--mut)"}}>{s?(s.err?"load failed":s.top):"—"}</td>
+            <td className="r"><span className="chip" onClick={()=>{setAddr(p.addr);lookup(p.addr);}}>view ↑</span></td>
+          </tr>;})}</tbody>
+      </table>
+      <p className="note" style={{marginTop:8}}><b>Score</b> (0–100) blends lifetime efficiency (pnl/vol), AI verdict (after you analyze a wallet), and total profit — higher = copy first. <b>Eff.</b> is lifetime pnl ÷ volume. Set <b>auto</b> to re-scan on a timer. To curate, edit the <code style={{fontFamily:"JetBrains Mono"}}>PINNED</code> array in the file.</p>
+    </div>
+
+    {newEntries.length>0&&<div className="panel" style={{marginTop:14,borderColor:"rgba(242,179,61,.4)"}}>
+      <div className="eyebrow" style={{marginBottom:8,color:"var(--gold)"}}>🆕 New positions since your last scan — freshest copy signal</div>
+      <table>
+        <thead><tr><th>trader</th><th>market</th><th>outcome</th><th className="r">price</th><th className="r">size</th></tr></thead>
+        <tbody>{newEntries.map((n,i)=>(
+          <tr key={i}>
+            <td>{n.trader}</td>
+            <td style={{maxWidth:300,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n.market}</td>
+            <td className="pos">{n.outcome}</td>
+            <td className="r">{n.price?n.price.toFixed(3):"—"}</td>
+            <td className="r">{usd(n.value)}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+      <p className="note" style={{marginTop:8}}>Positions that appeared since the previous scan — the closest you get to catching a sharp <i>as</i> they enter, which is when copying still has edge. Entry near the shown price still has room; far above it, you’re late. (First scan shows nothing here — it sets the baseline.)</p>
+    </div>}
+
+    {consensus.length>0&&<div className="panel" style={{marginTop:14,borderColor:"rgba(63,191,214,.35)"}}>
+      <div className="eyebrow" style={{marginBottom:8,color:"var(--cyan)"}}>🐋 Smart-money consensus — where your sharps agree</div>
+      <table>
+        <thead><tr><th className="r">sharps</th><th>market</th><th>outcome</th><th className="r">price</th><th className="r">combined $</th><th>who</th></tr></thead>
+        <tbody>{consensus.map((c,i)=>(
+          <tr key={i}>
+            <td className="r"><span className="badge" style={{background:"rgba(63,191,214,.14)",color:"var(--cyan)"}}>{c.n}×</span></td>
+            <td style={{maxWidth:300,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.market}</td>
+            <td className="pos">{c.outcome}</td>
+            <td className="r">{c.price?c.price.toFixed(3):"—"}</td>
+            <td className="r">{usd(c.total)}</td>
+            <td style={{maxWidth:220,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"var(--mut)"}}>{c.holders.map(h=>h.name).join(", ")}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+      <p className="note" style={{marginTop:8}}>Markets where <b>2+ of your tracked sharps hold the same outcome</b> — the strongest copy signal here, since independent winners converging beats any single wallet. Higher <b>sharps</b> count = stronger agreement. Still check the entry <b>price</b>: if it’s already near 0.90+, the easy money is gone.</p>
+    </div>}
+
+    <SizingTool seed={seed}/>
+
+    <div className="panel" style={{marginTop:14}}>
+      <div className="controls" style={{margin:0,marginBottom:10}}>
+        <span className="eyebrow" style={{color:"var(--gold)"}}>Top traders by PnL</span>
+        <div className="grow"/>
+        <select value={cat} onChange={e=>setCat(e.target.value)}>
+          {["OVERALL","POLITICS","SPORTS","CRYPTO","CULTURE","ECONOMICS","TECH","FINANCE","WEATHER"].map(c=><option key={c} value={c}>{c.toLowerCase()}</option>)}
+        </select>
+        <select value={period} onChange={e=>setPeriod(e.target.value)}>
+          <option value="DAY">today</option><option value="WEEK">week</option>
+          <option value="MONTH">month</option><option value="ALL">all-time</option>
+        </select>
+        <button className="btn sm" onClick={loadLB} disabled={lbLoading}>{lbLoading?"…":"↻"}</button>
+      </div>
+      {lbErr&&<div className="errbox" style={{marginTop:0}}>{lbErr}</div>}
+      {lbLoading&&!lb.length&&<div className="reason"><span className="spin"/> loading leaderboard…</div>}
+      {!lbLoading&&!lb.length&&!lbErr&&<div className="reason" style={{color:"var(--mut)"}}>No traders returned for this filter.</div>}
+      {lb.length>0&&<table>
+        <thead><tr><th>#</th><th>trader</th><th className="r">pnl</th><th className="r">volume</th><th className="r">eff.</th><th className="r"></th></tr></thead>
+        <tbody>{lb.map((t)=>{
+          const eff=num(t.vol)>0?(num(t.pnl)/num(t.vol)*100):null;
+          const named=t.userName&&!/^0x/.test(t.userName);
+          return <tr key={t.proxyWallet}>
+            <td className="mono" style={{color:"var(--dim)"}}>{t.rank}</td>
+            <td style={{maxWidth:200,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+              {named?t.userName:(t.proxyWallet.slice(0,6)+"…"+t.proxyWallet.slice(-4))}
+              {t.xUsername?<span style={{color:"var(--cyan)"}}> @{t.xUsername}</span>:null}
+            </td>
+            <td className="r pos">+{usd(t.pnl)}</td>
+            <td className="r" style={{color:"var(--mut)"}}>{num(t.vol)>0?usd(t.vol):"—"}</td>
+            <td className="r" style={{color: eff!=null&&eff>=50?"var(--gold)":"var(--mut)"}}>{eff!=null?eff.toFixed(0)+"%":"—"}</td>
+            <td className="r"><span className="chip" onClick={()=>{setAddr(t.proxyWallet);lookup(t.proxyWallet);}}>view ↑</span></td>
+          </tr>;})}</tbody>
+      </table>}
+      <p className="note" style={{marginTop:8}}>“Eff.” = pnl ÷ volume — high % means they made a lot moving relatively little (skill signal, not just size). Click <b>view</b> to load that wallet’s positions below.</p>
+    </div>
+    {err&&<div className="errbox">{err}</div>}
+    {!data&&!loading&&<div className="empty"><span className="eyebrow">pick a trader to copy</span>
+      Hit <b>view</b> on anyone in the leaderboard above to load their live positions and latest trades — or paste a 0x address directly.</div>}
+    {data&&<>
+      <div className="panel" style={{marginTop:14,borderColor:"rgba(242,179,61,.45)"}}>
+        <div className="controls" style={{margin:0,marginBottom:10}}>
+          <span className="eyebrow" style={{color:"var(--gold)"}}>AI read — what to copy</span>
+          <div className="grow"/>
+          <button className="btn sm" onClick={()=>runWalletAI()} disabled={aiWBusy}>{aiWBusy?"…":"↻ re-run"}</button>
+        </div>
+        {aiWBusy&&!aiW[data.w]&&<div className="reason"><span className="spin"/> reading their moves &amp; checking news…</div>}
+        {aiW[data.w]&&aiW[data.w].error&&<div className="errbox" style={{marginTop:0}}>AI failed: {aiW[data.w].error}</div>}
+        {aiW[data.w]&&!aiW[data.w].error&&(()=>{ const a=aiW[data.w];
+          const vc={copy:"high",selective:"med",avoid:"low"}[a.verdict]||"med";
+          const moves=Array.isArray(a.moves)?a.moves:[];
+          return <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+              <span className={"conf "+vc} style={{fontSize:13}}>{String(a.verdict||"").toUpperCase()}</span>
+              <span className="reason" style={{margin:0,fontSize:13.5,color:"var(--ink)"}}>{a.summary}</span>
+            </div>
+            {moves.length>0&&<table>
+              <thead><tr><th>do</th><th>market</th><th>side</th><th className="r">now</th><th>why</th><th className="r"></th></tr></thead>
+              <tbody>{moves.map((mv,i)=>{ const col=mv.action==="copy"?"pos":(mv.action==="skip"?"neg":"");
+                return <tr key={i}>
+                  <td className={col} style={{fontWeight:700}}>{String(mv.action||"").toUpperCase()}</td>
+                  <td style={{maxWidth:230,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{mv.market}</td>
+                  <td className="pos">{mv.side}</td>
+                  <td className="r">{mv.now!=null?num(mv.now).toFixed(2):"—"}</td>
+                  <td className="reason" style={{margin:0}}>{mv.why}</td>
+                  <td className="r">{mv.now!=null?<span className="chip" onClick={()=>sizeThis(num(mv.now))}>size →</span>:null}</td>
+                </tr>;})}</tbody>
+            </table>}
+          </div>;
+        })()}
+      </div>
+
+      <div className="panel" style={{marginTop:14,borderColor:"rgba(74,222,128,.4)"}}>
+        <div className="eyebrow" style={{marginBottom:8,color:"var(--green)"}}>Copyable open positions — ranked by how live they are</div>
+        {(data.positions||[]).length===0&&<div className="reason" style={{color:"var(--mut)"}}>This wallet has no open positions right now.</div>}
+        {(data.positions||[]).length>0&&<table>
+          <thead><tr><th>signal</th><th>market</th><th>outcome</th><th className="r">their avg</th><th className="r">now</th><th className="r">their size</th><th className="r">pnl%</th><th className="r"></th></tr></thead>
+          <tbody>{[...data.positions].map(p=>({p,tag:copyTag(p)}))
+            .sort((a,b)=>(TAGORDER[a.tag.t]-TAGORDER[b.tag.t])||(num(b.p.currentValue)-num(a.p.currentValue)))
+            .slice(0,25).map((c,i)=>{ const p=c.p, pp=num(p.percentPnl);
+            return <tr key={i}>
+              <td><span className="badge" style={{background:"transparent",border:"1px solid "+c.tag.col,color:c.tag.col}} title={c.tag.why}>{c.tag.t}</span></td>
+              <td style={{maxWidth:260,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.title}</td>
+              <td className="pos">{p.outcome}</td>
+              <td className="r">{num(p.avgPrice).toFixed(3)}</td>
+              <td className="r">{num(p.curPrice).toFixed(3)}</td>
+              <td className="r">{usd(num(p.currentValue))}</td>
+              <td className={"r "+(pp>=0?"pos":"neg")}>{pct(pp)}</td>
+              <td className="r"><span className="chip" onClick={()=>sizeThis(num(p.curPrice))}>size →</span></td>
+            </tr>;})}</tbody>
+        </table>}
+        <p className="note" style={{marginTop:8}}><b style={{color:"var(--green)"}}>COPY</b> = current price ≈ their entry, you can still join near their cost. <b style={{color:"var(--gold)"}}>RIDE</b> = up since they entered (costlier now). <b style={{color:"var(--cyan)"}}>DIP</b> = below their entry (recovery bet). <b style={{color:"var(--rose)"}}>LATE</b> = already ≥0.92, little left. Hit <b>size →</b> to push that price into the sizing calculator above.</p>
+      </div>
+
+      <div className="controls" style={{margin:0,marginTop:14}}>
+        <button className="btn sm" onClick={()=>setShowRaw(s=>!s)}>{showRaw?"− hide raw data":"+ show raw data (positions & trades)"}</button>
+        <span className="mono" style={{color:"var(--dim)",fontSize:11}}>{usd(data.value)} open · {data.positions.length} pos · {data.acts.length} trades</span>
+      </div>
+      {showRaw&&<>
+      <div className="panel" style={{display:"flex",gap:30,flexWrap:"wrap",marginTop:14}}>
+        <div className="stat"><span className="v mono">{usd(data.value)}</span><span className="k">open value</span></div>
+        <div className="stat"><span className={"v mono "+(data.cashPnl>=0?"pos":"neg")}>{data.cashPnl>=0?"+":""}{usd(data.cashPnl)}</span><span className="k">cash pnl (open)</span></div>
+        <div className="stat"><span className="v mono">{data.positions.length}</span><span className="k">open positions</span></div>
+        <div className="stat"><span className="v mono">{data.acts.length}</span><span className="k">recent trades</span></div>
+      </div>
+
+      <div className="panel" style={{marginTop:14}}>
+        <div className="eyebrow" style={{marginBottom:8,color:"var(--gold)"}}>Latest trades — the copy signal</div>
+        <table><thead><tr><th>side</th><th>outcome</th><th className="r">price</th><th className="r">size</th><th>market</th></tr></thead>
+        <tbody>{data.acts.slice(0,15).map((t,i)=>{
+          const side=(t.side||"").toUpperCase();
+          return <tr key={i}>
+            <td className={side==="BUY"?"buy":"sell"}>{side||"—"}</td>
+            <td>{t.outcome||"—"}</td>
+            <td className="r">{num(t.price).toFixed(3)}</td>
+            <td className="r">{usd(num(t.usdcSize)||num(t.size)*num(t.price))}</td>
+            <td style={{maxWidth:340,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.title||t.slug||"—"}</td>
+          </tr>;})}</tbody></table>
+      </div>
+
+      <div className="panel" style={{marginTop:14}}>
+        <div className="eyebrow" style={{marginBottom:8,color:"var(--gold)"}}>Open positions</div>
+        <table><thead><tr><th>market</th><th>outcome</th><th className="r">size</th><th className="r">avg</th><th className="r">now</th><th className="r">pnl%</th></tr></thead>
+        <tbody>{data.positions.slice(0,20).map((p,i)=>{
+          const pp=num(p.percentPnl);
+          return <tr key={i}>
+            <td style={{maxWidth:300,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.title||"—"}</td>
+            <td>{p.outcome||"—"}</td>
+            <td className="r">{usd(num(p.currentValue))}</td>
+            <td className="r">{num(p.avgPrice).toFixed(3)}</td>
+            <td className="r">{num(p.curPrice).toFixed(3)}</td>
+            <td className={"r "+(pp>=0?"pos":"neg")}>{pct(pp)}</td>
+          </tr>;})}</tbody></table>
+      </div>
+      </>}
+      <p className="note"><b>Copy-trading reality:</b> you see these trades <i>after</i> they happened, so the price has already moved against you. Leaderboards are survivorship-biased (you can’t see the blown-up accounts), and a wallet’s open pnl can flip fast. Use it as one input, size small, and never mirror leverage you don’t understand.</p>
+    </>}
+  </>);
+}
+
+/* ---------- Setup ---------- */
+function Setup({proxy,setProxy,onSaved}){
+  const [v,setV]=useState(proxy);
+  const [ai,setAi]=useState(()=>{try{return localStorage.getItem("pm_ai")||""}catch(e){return ""}});
+  const saveAi=(dataProxy)=>{ const val=(ai.trim()||(dataProxy||"").trim());
+    AI_ENDPOINT=val||"https://api.anthropic.com/v1/messages";
+    try{ if(val) localStorage.setItem("pm_ai",val); else localStorage.removeItem("pm_ai"); }catch(e){} };
+  const fn=`// api/proxy.js — ONE file: data proxy (GET) + AI proxy (POST).
+// For AI, add env var ANTHROPIC_API_KEY in Vercel. Then in Setup put /api/proxy.
+export default async function handler(req,res){
+  res.setHeader("Access-Control-Allow-Origin","*");
+  res.setHeader("Access-Control-Allow-Methods","GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers","Content-Type");
+  if(req.method==="OPTIONS") return res.status(204).end();
+  if(req.method==="POST"){                       // --- AI ---
+    if(!process.env.ANTHROPIC_API_KEY) return res.status(500).json({error:"no ANTHROPIC_API_KEY"});
+    const body=typeof req.body==="string"?req.body:JSON.stringify(req.body||{});
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":process.env.ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01"},
+      body});
+    res.setHeader("Content-Type","application/json");
+    return res.status(r.status).send(await r.text());
+  }
+  const url=req.query.url;                        // --- data ---
+  if(!url||!/^https:\\/\\/[a-z0-9-]+\\.polymarket\\.com\\//i.test(url))
+    return res.status(400).json({error:"GET needs ?url=<polymarket url>"});
+  const r=await fetch(url,{headers:{accept:"application/json"}});
+  res.setHeader("Content-Type",r.headers.get("content-type")||"application/json");
+  res.status(r.status).send(await r.text());
+}`;
+  return (
+    <div className="panel" style={{marginTop:18,display:"flex",flexDirection:"column",gap:16}}>
+      <div>
+        <div className="eyebrow" style={{color:"var(--gold)"}}>Setup (2 files total)</div>
+        <p className="note" style={{marginTop:6}}>Upload <code style={{fontFamily:"JetBrains Mono"}}>index.html</code> to the root and <code style={{fontFamily:"JetBrains Mono"}}>proxy.js</code> inside an <code style={{fontFamily:"JetBrains Mono"}}>api</code> folder. Then put <code style={{fontFamily:"JetBrains Mono"}}>/api/proxy</code> in the field below — it powers both the data feed and the AI. Leave blank to try direct calls (works inside claude.ai).</p>
+      </div>
+      <label className="field">
+        <span className="eyebrow">proxy URL  ·  /api/proxy</span>
+        <input placeholder="/api/proxy" value={v} onChange={e=>setV(e.target.value)} style={{fontFamily:"JetBrains Mono"}}/>
+      </label>
+      <label className="field">
+        <span className="eyebrow">AI endpoint (optional — defaults to the proxy above)</span>
+        <input placeholder="(leave blank — uses /api/proxy)" value={ai} onChange={e=>setAi(e.target.value)} style={{fontFamily:"JetBrains Mono"}}/>
+      </label>
+      <button className="btn gold" style={{alignSelf:"flex-start"}} onClick={()=>{setProxy(v);saveAi(v);onSaved();}}>Save &amp; reload data</button>
+      <div>
+        <div className="eyebrow" style={{color:"var(--gold)",marginBottom:6}}>The one proxy file — api/proxy.js</div>
+        <pre className="mono" style={{background:"var(--bg)",border:"1px solid var(--line)",borderRadius:8,padding:14,overflow:"auto",fontSize:11.5,lineHeight:1.5,color:"var(--mut)"}}>{fn}</pre>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
