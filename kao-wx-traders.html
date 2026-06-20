@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAO WX · Traders Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0F1A; --bg2:#0F1726; --panel:#111B2E; --raised:#172439;
+    --line:#243349; --line2:#2E4159;
+    --amber:#FFB000; --cyan:#5BC8FF;
+    --txt:#E7EDF6; --dim:#8A99B2; --faint:#5C6B88;
+    --good:#4FD6A0; --bad:#FF5C6B;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--txt);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;background:
+    radial-gradient(1100px 560px at 82% -10%, rgba(255,176,0,.05), transparent 60%),
+    radial-gradient(900px 500px at -10% 8%, rgba(91,200,255,.05), transparent 55%),
+    var(--bg);padding:0 16px 60px}
+  .wrap{max-width:960px;margin:0 auto}
+
+  .statusbar{display:flex;align-items:center;gap:14px;padding:11px 4px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;
+    position:sticky;top:0;background:linear-gradient(var(--bg),var(--bg) 70%,transparent);z-index:20;flex-wrap:wrap}
+  .statusbar .dot{width:6px;height:6px;border-radius:50%;background:var(--faint);transition:all .3s}
+  .statusbar.live .dot{background:var(--good);box-shadow:0 0 8px var(--good);animation:pulse 1.6s infinite}
+  .statusbar.err .dot{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .statusbar b{color:var(--amber);font-weight:600}
+  .statusbar .sep{color:var(--line)}
+  .statusbar .right{margin-left:auto;display:flex;gap:12px}
+  #last{color:var(--dim)}
+
+  header{padding:28px 4px 16px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.32em;color:var(--amber);text-transform:uppercase;margin-bottom:12px}
+  h1{font-size:clamp(28px,6.5vw,46px);line-height:.97;font-weight:700;letter-spacing:-.02em}
+  h1 .a{color:var(--cyan)}
+  .sub{margin-top:13px;color:var(--dim);font-size:14.5px;max-width:580px;line-height:1.5}
+
+  /* agent strip */
+  .agents{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+  .ag{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--dim);
+    background:var(--raised);border:1px solid var(--line);padding:6px 11px;border-radius:20px}
+  .ag .b{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+  .ag.on .b{background:var(--good);box-shadow:0 0 6px var(--good)}
+  .ag .tag{color:var(--amber);font-weight:600}
+
+  .console{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:20px;
+    box-shadow:0 24px 60px -34px rgba(0,0,0,.7)}
+  .ctitle{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;margin-bottom:12px;display:flex;gap:8px;align-items:center}
+  .ctitle::before{content:'';width:14px;height:1px;background:var(--amber)}
+  .inrow{display:flex;gap:10px;flex-wrap:wrap}
+  input[type=text]{flex:1;min-width:220px;background:var(--bg);border:1px solid var(--line);color:var(--txt);
+    font-family:var(--mono);font-size:14px;padding:12px 13px;border-radius:10px;outline:none;transition:border-color .15s,box-shadow .15s}
+  input[type=text]::placeholder{color:var(--faint)}
+  input[type=text]:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(91,200,255,.1)}
+  .btn{background:var(--amber);color:#1A1206;border:none;font-family:var(--mono);font-weight:700;font-size:13px;
+    letter-spacing:.06em;text-transform:uppercase;padding:0 18px;border-radius:10px;cursor:pointer;transition:filter .15s,transform .05s;white-space:nowrap}
+  .btn:hover{filter:brightness(1.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--amber);color:var(--txt);filter:none}
+  .btn.live{background:var(--good)}
+  .btn.stop{background:var(--bad);color:#fff}
+
+  .wlist{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+  .wchip{display:flex;align-items:center;gap:8px;background:var(--raised);border:1px solid var(--line);
+    font-family:var(--mono);font-size:12.5px;color:var(--txt);padding:7px 10px;border-radius:8px}
+  .wchip .x{color:var(--faint);cursor:pointer;font-size:14px;line-height:1}
+  .wchip .x:hover{color:var(--bad)}
+
+  .ctrls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+  .ctrls .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase}
+  select{background:var(--bg);border:1px solid var(--line);color:var(--txt);font-family:var(--mono);font-size:13px;padding:9px 10px;border-radius:8px;outline:none}
+  .toggle{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;color:var(--dim);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--amber)}
+  .adv{margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--cyan);cursor:pointer;user-select:none}
+  .advbox{display:none;margin-top:10px}
+  .advbox.open{display:block}
+  .hint{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:7px;line-height:1.6}
+
+  /* banner */
+  .banner{background:rgba(255,92,107,.08);border:1px solid rgba(255,92,107,.3);border-radius:11px;padding:14px 16px;
+    margin-top:18px;font-size:13.5px;line-height:1.6;color:var(--txt)}
+  .banner b{color:var(--bad)}
+
+  /* layout */
+  .grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:22px}
+  @media(min-width:760px){.grid{grid-template-columns:1.35fr 1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card-h{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--amber);text-transform:uppercase;
+    padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .card-h .n{color:var(--faint)}
+  .card-b{padding:14px 16px}
+
+  /* wallet block */
+  .wblock{border-bottom:1px solid var(--line)}
+  .wblock:last-child{border-bottom:none}
+  .whead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 16px;background:var(--bg2)}
+  .whead .addr{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--cyan)}
+  .whead .stat{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .whead .stat b{color:var(--txt)}
+  .whead a{color:var(--faint);font-family:var(--mono);font-size:11px;text-decoration:none;margin-left:auto}
+  .whead a:hover{color:var(--amber)}
+
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+  th{text-align:left;font-size:9.5px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;font-weight:600;padding:8px 12px;border-bottom:1px solid var(--line)}
+  th.r,td.r{text-align:right}
+  td{padding:9px 12px;border-bottom:1px solid rgba(36,51,73,.45)}
+  tr:last-child td{border-bottom:none}
+  .mkt{color:var(--txt)}
+  .out{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--raised);color:var(--dim);margin-left:6px}
+  .pos{color:var(--good)}.neg{color:var(--bad)}
+  .empty{padding:24px 16px;text-align:center;color:var(--faint);font-family:var(--mono);font-size:12.5px}
+
+  /* feed */
+  #feed{max-height:560px;overflow-y:auto}
+  .ev{display:flex;gap:11px;padding:11px 16px;border-bottom:1px solid rgba(36,51,73,.45);animation:slideIn .35s}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+  .ev .ic{font-size:17px;line-height:1.3}
+  .ev .body{flex:1;min-width:0}
+  .ev .top{font-size:13px;font-weight:600}
+  .ev .top.open{color:var(--good)}.ev .top.close{color:var(--bad)}.ev .top.chg{color:var(--amber)}
+  .ev .mk{font-size:12px;color:var(--dim);margin-top:2px;line-height:1.4}
+  .ev .ts{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:3px}
+  .feed-empty{padding:40px 16px;text-align:center;color:var(--faint);font-family:var(--mono);font-size:12.5px;line-height:1.7}
+  .feed-empty .big{font-size:26px;opacity:.5;margin-bottom:10px}
+
+  footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center;letter-spacing:.04em;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="statusbar" id="bar">
+    <span class="dot"></span><b>KAO WX</b><span class="sep">/</span><span id="barlbl">TRADERS WATCH · STANDBY</span>
+    <div class="right"><span class="sep">DATA-API · POLYMARKET</span><span id="last">—</span></div>
+  </div>
+
+  <header>
+    <div class="kicker">VIGILANCIA DE WALLETS · WEATHER</div>
+    <h1>Traders <span class="a">Watch</span></h1>
+    <p class="sub">Agrega las wallets que quieres seguir. Mientras tengas el dashboard abierto, los agentes leen sus posiciones en vivo y te avisan en pantalla (con sonido) cuando abren o cierran una posición.</p>
+
+    <div class="agents">
+      <div class="ag" id="agWatch"><span class="b"></span><span class="tag">WATCH</span> vigilando wallets</div>
+      <div class="ag" id="agMkt"><span class="b"></span><span class="tag">MKT</span> leyendo posiciones</div>
+      <div class="ag" id="agAlert"><span class="b"></span><span class="tag">ALERT</span> detectando cambios</div>
+    </div>
+  </header>
+
+  <div class="console">
+    <div class="ctitle">Wallets vigiladas</div>
+    <div class="inrow">
+      <input type="text" id="addr" placeholder="0x… pega una dirección de Polymarket" autocomplete="off">
+      <button class="btn ghost" id="add">+ Agregar</button>
+    </div>
+    <div class="wlist" id="wlist"></div>
+
+    <div class="ctrls">
+      <span class="lbl">Refresco</span>
+      <select id="interval">
+        <option value="15000">15 s</option>
+        <option value="30000" selected>30 s</option>
+        <option value="60000">60 s</option>
+      </select>
+      <label class="toggle"><input type="checkbox" id="sound" checked> 🔔 sonido</label>
+      <label class="toggle"><input type="checkbox" id="notif"> 🖥️ aviso del navegador</label>
+      <button class="btn live" id="toggle" style="margin-left:auto">▶ Iniciar vigilancia</button>
+    </div>
+
+    <div class="adv" id="advToggle">⚙ Opciones avanzadas (proxy)</div>
+    <div class="advbox" id="advBox">
+      <input type="text" id="proxy" placeholder="Proxy base (opcional) — ej: https://mi-proxy.vercel.app/api/poly" autocomplete="off" style="width:100%">
+      <div class="hint">Solo si tu navegador bloquea la lectura directa (CORS). Déjalo vacío para intentar directo. Si lo necesitas, te armo el proxy de 1 archivo para Vercel.</div>
+    </div>
+  </div>
+
+  <div id="banner"></div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-h"><span class="n">01</span> Posiciones abiertas</div>
+      <div id="positions"><div class="empty">Agrega una wallet y dale a <b>Iniciar vigilancia</b>.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><span class="n">02</span> Alertas en vivo</div>
+      <div id="feed"><div class="feed-empty"><div class="big">📡</div>Sin eventos todavía.<br>Cuando una wallet abra o cierre algo, aparece aquí.</div></div>
+    </div>
+  </div>
+
+  <footer>
+    KAO WX · TRADERS WATCH · LEE LA DATA API PÚBLICA DE POLYMARKET (SOLO LECTURA)<br>
+    LAS ALERTAS FUNCIONAN MIENTRAS EL DASHBOARD ESTÉ ABIERTO · NO ES CONSEJO FINANCIERO
+  </footer>
+</div>
+
+<script>
+/* ===================== ESTADO ===================== */
+const DATA_API_DEFAULT='https://data-api.polymarket.com';
+let wallets=['0xAB00847f500104306F7fa9748634F19982eD9DB4'.toLowerCase()];
+let snap={};            // addr -> {key:pos}
+let timer=null, running=false, firstCycle={};
+let actx=null;
+
+/* ===================== HELPERS ===================== */
+const $=id=>document.getElementById(id);
+const short=a=>a.slice(0,6)+'…'+a.slice(-4);
+const isAddr=a=>/^0x[a-fA-F0-9]{40}$/.test(a);
+function money(v){const n=Math.round(v); return (n<0?'-':'')+'$'+Math.abs(n).toLocaleString('en-US');}
+function apiBase(){return ($('proxy').value.trim()||DATA_API_DEFAULT).replace(/\/$/,'');}
+
+function normPositions(data){
+  const items=Array.isArray(data)?data:(data&&data.positions?data.positions:[]);
+  const map={};
+  for(const p of items){
+    const key=String(p.asset ?? p.conditionId ?? p.title ?? Math.random());
+    map[key]={
+      key,
+      title:p.title||p.slug||'mercado',
+      outcome:p.outcome ?? '',
+      size:(+p.size)||0,
+      value:(+p.currentValue)|| (((+p.curPrice)||0)*((+p.size)||0)),
+      pnl:(p.cashPnl!=null?+p.cashPnl:null),
+      pnlPct:(p.percentPnl!=null?+p.percentPnl:null),
+      slug:p.slug||''
+    };
+  }
+  return map;
+}
+
+async function fetchPositions(addr){
+  const url=`${apiBase()}/positions?user=${addr}&sizeThreshold=0.5&limit=500&sortBy=CURRENT&sortDirection=DESC`;
+  const r=await fetch(url,{headers:{'Accept':'application/json'}});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return normPositions(await r.json());
+}
+
+/* ===================== DIFF (núcleo) ===================== */
+function diffPositions(prev,cur){
+  const ev=[];
+  for(const k in cur){
+    if(!(k in prev)) ev.push({type:'open',p:cur[k]});
+    else{
+      const o=prev[k].size||0,n=cur[k].size||0,d=n-o,t=Math.max(1,o*0.05);
+      if(d>t) ev.push({type:'add',p:cur[k],from:o,to:n,delta:d});
+      else if(-d>t) ev.push({type:'reduce',p:cur[k],from:o,to:n,delta:d});
+    }
+  }
+  for(const k in prev){ if(!(k in cur)) ev.push({type:'close',p:prev[k]}); }
+  return ev;
+}
+
+/* ===================== ALERTAS ===================== */
+function beep(kind){
+  if(!$('sound').checked) return;
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.frequency.value=kind==='close'?420:680;
+    o.type='sine'; o.connect(g); g.connect(actx.destination);
+    g.gain.setValueAtTime(.0001,actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.09,actx.currentTime+.02);
+    g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+.22);
+    o.start(); o.stop(actx.currentTime+.24);
+  }catch(e){}
+}
+function notify(title,body){
+  if(!$('notif').checked) return;
+  try{ if(window.Notification && Notification.permission==='granted') new Notification(title,{body}); }catch(e){}
+}
+function pushEvent(addr,e){
+  const feed=$('feed');
+  const fe=feed.querySelector('.feed-empty'); if(fe) feed.innerHTML='';
+  const p=e.p;
+  let ic,cls,top;
+  if(e.type==='open'){ ic='🟢'; cls='open'; top='ABRIÓ posición'; }
+  else if(e.type==='close'){ ic='🔴'; cls='close'; top='CERRÓ / resolvió'; }
+  else if(e.type==='add'){ ic='➕'; cls='chg'; top=`Aumentó (+${Math.round(e.delta).toLocaleString('en-US')})`; }
+  else { ic='➖'; cls='chg'; top=`Redujo (${Math.round(e.delta).toLocaleString('en-US')})`; }
+  let extra='';
+  if(e.type==='close' && p.pnl!=null) extra=` · PnL ${p.pnl>=0?'🟩':'🟥'} ${money(p.pnl)}`;
+  if(e.type==='open') extra=` · ${money(p.value)}`;
+  const t=new Date().toLocaleTimeString('es-ES');
+  const el=document.createElement('div');
+  el.className='ev';
+  el.innerHTML=`<div class="ic">${ic}</div><div class="body">
+    <div class="top ${cls}">${top}</div>
+    <div class="mk">${esc(p.title)} <span class="out">${esc(p.outcome)}</span>${extra}</div>
+    <div class="ts">${short(addr)} · ${t}</div></div>`;
+  feed.insertBefore(el,feed.firstChild);
+  beep(e.type);
+  notify(`${ic} ${top}`,`${p.title} (${p.outcome})`);
+  flash($('agAlert'));
+}
+function esc(s){return String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));}
+
+/* ===================== RENDER POSICIONES ===================== */
+function renderPositions(){
+  const box=$('positions');
+  if(!wallets.length){ box.innerHTML='<div class="empty">Sin wallets. Agrega una arriba.</div>'; return; }
+  let html='';
+  for(const addr of wallets){
+    const cur=snap[addr];
+    let totV=0,totP=0,hasP=false,rows='';
+    if(cur){
+      const arr=Object.values(cur).sort((a,b)=>b.value-a.value);
+      arr.forEach(p=>{
+        totV+=p.value; if(p.pnl!=null){totP+=p.pnl;hasP=true;}
+        const pc=p.pnlPct!=null?` <span class="${p.pnlPct>=0?'pos':'neg'}">${p.pnlPct>=0?'+':''}${p.pnlPct.toFixed(0)}%</span>`:'';
+        rows+=`<tr><td class="mkt">${esc(p.title)}<span class="out">${esc(p.outcome)}</span></td>
+          <td class="r">${Math.round(p.size).toLocaleString('en-US')}</td>
+          <td class="r">${money(p.value)}</td>
+          <td class="r">${p.pnl!=null?`<span class="${p.pnl>=0?'pos':'neg'}">${money(p.pnl)}</span>`:'—'}${pc}</td></tr>`;
+      });
+      if(!arr.length) rows=`<tr><td colspan="4" class="empty" style="padding:18px">Sin posiciones abiertas ahora.</td></tr>`;
+    }
+    html+=`<div class="wblock">
+      <div class="whead">
+        <span class="addr">${short(addr)}</span>
+        <span class="stat"><b>${cur?Object.keys(cur).length:'—'}</b> posiciones</span>
+        <span class="stat">valor <b>${cur?money(totV):'—'}</b></span>
+        ${hasP?`<span class="stat">PnL <b class="${totP>=0?'pos':'neg'}">${money(totP)}</b></span>`:''}
+        <a href="https://polymarket.com/profile/${addr}" target="_blank" rel="noopener">perfil ↗</a>
+      </div>
+      ${cur?`<table><thead><tr><th>Mercado</th><th class="r">Shares</th><th class="r">Valor</th><th class="r">PnL</th></tr></thead><tbody>${rows}</tbody></table>`
+           :`<div class="empty">Esperando primer ciclo…</div>`}
+    </div>`;
+  }
+  box.innerHTML=html;
+}
+
+/* ===================== CICLO ===================== */
+async function tick(){
+  setAgents(true);
+  let anyErr=null;
+  for(const addr of wallets){
+    try{
+      const cur=await fetchPositions(addr);
+      const prev=snap[addr];
+      snap[addr]=cur;
+      if(firstCycle[addr]===undefined){ firstCycle[addr]=true; } // baseline: no alerta lo ya abierto
+      else if(prev){ diffPositions(prev,cur).forEach(e=>pushEvent(addr,e)); }
+    }catch(e){ anyErr=e.message; }
+  }
+  renderPositions();
+  $('last').textContent='actualizado '+new Date().toLocaleTimeString('es-ES');
+  if(anyErr){ setBar('err'); showBanner(anyErr); }
+  else { setBar('live'); clearBanner(); }
+}
+
+function start(){
+  if(running) return;
+  if(!wallets.length){ flash($('addr')); return; }
+  running=true; snap={}; firstCycle={};
+  $('toggle').textContent='⏸ Detener vigilancia'; $('toggle').className='btn stop';
+  setBar('live');
+  if($('notif').checked && window.Notification && Notification.permission==='default'){ try{Notification.requestPermission();}catch(e){} }
+  tick();
+  timer=setInterval(tick, +$('interval').value);
+}
+function stop(){
+  running=false; clearInterval(timer); timer=null;
+  $('toggle').textContent='▶ Iniciar vigilancia'; $('toggle').className='btn live';
+  setBar('idle'); setAgents(false);
+}
+
+/* ===================== UI ===================== */
+function setBar(state){
+  const bar=$('bar'); bar.classList.remove('live','err');
+  if(state==='live'){ bar.classList.add('live'); $('barlbl').textContent='TRADERS WATCH · EN VIVO'; }
+  else if(state==='err'){ bar.classList.add('err'); $('barlbl').textContent='TRADERS WATCH · ERROR DE LECTURA'; }
+  else { $('barlbl').textContent='TRADERS WATCH · STANDBY'; }
+}
+function setAgents(on){ ['agWatch','agMkt','agAlert'].forEach(id=>$(id).classList.toggle('on',on)); }
+function flash(el){ if(!el) return; el.style.transition='none'; el.style.boxShadow='0 0 0 2px var(--amber)';
+  setTimeout(()=>{el.style.transition='box-shadow .6s';el.style.boxShadow='none';},60); }
+function showBanner(msg){
+  $('banner').innerHTML=`<div class="banner"><b>⚠ No pude leer la Data API directo.</b> Puede ser CORS de tu navegador (${esc(msg)}).
+   Prueba: ábrelo en otro navegador, o usa el campo <b>Proxy</b> en opciones avanzadas. Si quieres, te armo el proxy de 1 archivo para Vercel — solo pídemelo.</div>`;
+}
+function clearBanner(){ $('banner').innerHTML=''; }
+
+function renderWallets(){
+  $('wlist').innerHTML=wallets.map(a=>`<div class="wchip">${short(a)} <span class="x" data-a="${a}">✕</span></div>`).join('')||'<span class="hint">Sin wallets agregadas.</span>';
+  $('wlist').querySelectorAll('.x').forEach(x=>x.onclick=()=>{ wallets=wallets.filter(w=>w!==x.dataset.a); delete snap[x.dataset.a]; delete firstCycle[x.dataset.a]; renderWallets(); renderPositions(); });
+}
+function addWallet(){
+  const v=$('addr').value.trim().toLowerCase();
+  if(!isAddr(v)){ flash($('addr')); return; }
+  if(!wallets.includes(v)) wallets.push(v);
+  $('addr').value=''; renderWallets();
+  if(running){ firstCycle[v]=undefined; tick(); }
+}
+
+$('add').onclick=addWallet;
+$('addr').addEventListener('keydown',e=>{if(e.key==='Enter')addWallet();});
+$('toggle').onclick=()=>running?stop():start();
+$('interval').onchange=()=>{ if(running){ clearInterval(timer); timer=setInterval(tick,+$('interval').value); } };
+$('advToggle').onclick=()=>$('advBox').classList.toggle('open');
+$('notif').onchange=()=>{ if($('notif').checked && window.Notification && Notification.permission==='default'){ try{Notification.requestPermission();}catch(e){} } };
+
+renderWallets();
+renderPositions();
+</script>
+</body>
+</html>
