@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeatherEdge AI | Polymarket Hunter Terminal</title>
+    <style>
+        :root {
+            --bg-dark: #050810;
+            --bg-panel: #0f1420;
+            --bg-card: #161c2c;
+            --border: #2a3144;
+            --text-main: #e0e6ed;
+            --text-dim: #6b7689;
+            --accent-blue: #00e5ff;
+            --accent-purple: #7c5cff;
+            --accent-green: #00ff9d;
+            --accent-red: #ff2d6f;
+            --accent-orange: #ffb627;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { font-size: 1.4rem; font-weight: 800; color: var(--accent-blue); letter-spacing: 1px; }
+        .status-bar { display: flex; gap: 20px; font-size: 0.85rem; color: var(--text-dim); }
+        .status-item span { color: var(--text-main); font-weight: 600; }
+
+        .terminal-grid {
+            display: grid;
+            grid-template-columns: 250px 1fr 350px;
+            gap: 1px;
+            background: var(--border);
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .panel { background: var(--bg-panel); overflow-y: auto; }
+        .panel-header { padding: 15px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-panel); z-index: 10; }
+
+        .agent-list { padding: 10px; }
+        .agent-card {
+            background: var(--bg-card);
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 3px solid var(--text-dim);
+            transition: all 0.3s ease;
+        }
+        .agent-card.active { border-left-color: var(--accent-green); }
+        .agent-card.error { border-left-color: var(--accent-red); }
+        .agent-name { font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+        .agent-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim); }
+        .agent-card.active .agent-status-dot { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+        .agent-conf { font-size: 0.75rem; color: var(--text-dim); }
+
+        .signals-grid { padding: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; }
+        .signal-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        .signal-card.hold { opacity: 0.4; }
+        .signal-card.buy { border-color: var(--accent-green); box-shadow: 0 0 15px rgba(0, 255, 157, 0.1); }
+        .signal-card.extreme { border-color: var(--accent-red); box-shadow: 0 0 20px rgba(255, 45, 111, 0.2); animation: pulse-border 2s infinite; }
+        
+        @keyframes pulse-border { 0%, 100% { box-shadow: 0 0 15px rgba(255, 45, 111, 0.2); } 50% { box-shadow: 0 0 25px rgba(255, 45, 111, 0.4); } }
+
+        .signal-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .signal-city { font-size: 1.1rem; font-weight: 700; }
+        .signal-action { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+        .action-buy-yes { background: rgba(0, 255, 157, 0.2); color: var(--accent-green); }
+        .action-buy-no { background: rgba(255, 45, 111, 0.2); color: var(--accent-red); }
+        .action-hold { background: rgba(107, 118, 137, 0.2); color: var(--text-dim); }
+
+        .bucket-meter { margin: 15px 0; }
+        .meter-label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px; }
+        .meter-bar { height: 8px; background: var(--bg-dark); border-radius: 4px; overflow: hidden; position: relative; }
+        .meter-threshold { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent-orange); z-index: 2; }
+        .meter-fill { height: 100%; background: var(--accent-blue); transition: width 0.5s ease; }
+
+        .signal-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; margin-bottom: 10px; }
+        .detail-item label { display: block; color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; }
+        .detail-item span { font-weight: 600; }
+
+        .risk-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .risk-extreme { background: var(--accent-red); color: white; animation: pulse 1.5s infinite; }
+        .risk-high { background: var(--accent-orange); color: black; }
+        .risk-medium { background: var(--accent-blue); color: black; }
+        .risk-low { background: var(--text-dim); color: white; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        .signal-reason { font-size: 0.8rem; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+        .signal-reason div { margin-bottom: 4px; }
+
+        .alert-item {
+            background: var(--bg-card);
+            padding: 12px;
+            margin: 10px;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent-red);
+        }
+        .alert-item.critical { border-left-color: var(--accent-red); background: rgba(255, 45, 111, 0.05); }
+        .alert-item.warning { border-left-color: var(--accent-orange); }
+        .alert-time { font-size: 0.7rem; color: var(--text-dim); }
+        .alert-msg { font-size: 0.85rem; margin-top: 5px; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">🌡️ WEATHEREDGE AI TERMINAL</div>
+        <div class="status-bar">
+            <div class="status-item">Agentes: <span id="stat-agents">0/12</span></div>
+            <div class="status-item">Mercados: <span id="stat-markets">0</span></div>
+            <div class="status-item">Señales: <span id="stat-signals">0</span></div>
+            <div class="status-item">Última Sync: <span id="stat-update">--</span></div>
+        </div>
+    </header>
+
+    <div class="terminal-grid">
+        <div class="panel">
+            <div class="panel-header">Fleet de Agentes IA (12)</div>
+            <div class="agent-list" id="agents-container"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Motor de Cruce de Bucket (En Vivo)</div>
+            <div class="signals-grid" id="signals-container">
+                <div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); margin-top: 50px;">
+                    Inicializando agentes y buscando mercados en Polymarket...
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Alertas de Último Minuto</div>
+            <div id="alerts-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // CONFIGURACIÓN Y ESTADO
+        // ═══════════════════════════════════════════════════════════════
+        
+        const WEATHER_MODELS = [
+            { id: 'gfs_global', name: 'NOAA GFS', agent: 'Agent-GFS', country: '🇺🇸', color: '#00e5ff' },
+            { id: 'ecmwf_ifs04', name: 'ECMWF', agent: 'Agent-ECMWF', country: '🇪🇺', color: '#7c5cff' },
+            { id: 'gem_global', name: 'GEM Global', agent: 'Agent-GEM', country: '🇨🇦', color: '#00ff9d' },
+            { id: 'icon_seamless', name: 'DWD ICON', agent: 'Agent-ICON', country: '🇩🇪', color: '#ffb627' },
+            { id: 'jma_seamless', name: 'JMA', agent: 'Agent-JMA', country: '🇯🇵', color: '#ff2d6f' },
+            { id: 'meteofrance_seamless', name: 'Météo-France', agent: 'Agent-MF', country: '🇫🇷', color: '#ff8b3d' },
+            { id: 'ukmo_seamless', name: 'UK Met Office', agent: 'Agent-UKMO', country: '🇬🇧', color: '#c77dff' },
+        ];
+
+        const state = {
+            agents: [],
+            weatherData: {},    
+            activeLocations: {}, 
+            markets: [],
+            signals: [],
+            alerts: [],
+            lastUpdate: null,
+        };
+
+        function initAgents() {
+            state.agents = WEATHER_MODELS.map(model => ({
+                id: model.agent, name: model.agent, type: 'weather-model', model: model.name,
+                country: model.country, color: model.color, status: 'idle', lastUpdate: null, predictions: {}, confidence: 0
+            }));
+
+            state.agents.push({ id: 'Agent-Geocoding', name: 'Agent-Geocoding', type: 'system', model: 'Open-Meteo Geo', country: '🌐', color: '#888', status: 'idle', lastUpdate: null, predictions: {}, confidence: 0 });
+            state.agents.push({ id: 'Agent-LiveObs', name: 'Agent-LiveObs', type: 'observation', model: 'Live Stations', country: '📡', color: '#ff4d4d', status: 'idle', lastUpdate: null, predictions: {}, confidence: 0 });
+            state.agents.push({ id: 'Agent-Ensemble', name: 'Agent-Ensemble', type: 'analysis', model: 'Weighted Ensemble', country: '🌐', color: '#00e5ff', status: 'idle', lastUpdate: null, predictions: {}, confidence: 0 });
+            state.agents.push({ id: 'Agent-Polymarket', name: 'Agent-Polymarket', type: 'market', model: 'Gamma API', country: '📊', color: '#ff2d6f', status: 'idle', lastUpdate: null, predictions: {}, confidence: 0 });
+            state.agents.push({ id: 'Agent-Strategy', name: 'Agent-Strategy', type: 'strategy', model: 'Bucket Crosser Engine', country: '🎯', color: '#00ff9d', status: 'idle', lastUpdate: null, predictions: {}, confidence: 0 });
+            
+            renderAgents();
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // GEOCODING Y PARSING DINÁMICO
+        // ═══════════════════════════════════════════════════════════════
+
+        async function geocodeCity(cityName) {
+            if (state.activeLocations[cityName]) return state.activeLocations[cityName];
+
+            try {
+                const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.results && data.results.length > 0) {
+                    const loc = data.results[0];
+                    const coords = { lat: loc.latitude, lon: loc.longitude, tz: loc.timezone };
+                    state.activeLocations[cityName] = coords;
+                    
+                    const geoAgent = state.agents.find(a => a.id === 'Agent-Geocoding');
+                    if (geoAgent) {
+                        geoAgent.status = 'active';
+                        geoAgent.lastUpdate = new Date().toISOString();
+                        geoAgent.predictions[cityName] = coords;
+                    }
+                    return coords;
+                }
+            } catch (err) {
+                console.error(`Geocoding failed for ${cityName}:`, err.message);
+            }
+            return null;
+        }
+
+        function parseMarketQuestion(question) {
+            const q = question.toLowerCase();
+            const cityMatch = q.match(/(?:temp(?:erature)?\s+(?:in|for|at)\s+|high\s+(?:in|for)\s+|weather\s+(?:in|for)\s+)([a-z\s,]+?)(?:\s+(?:on|be|exceed|reach|above|over|below|under|hit|drop)|[.,?])/i);
+            let city = cityMatch ? cityMatch[1].trim() : null;
+
+            if (!city) {
+                const knownCities = ['new york', 'los angeles', 'miami', 'chicago', 'houston', 'phoenix', 'london', 'tokyo', 'paris', 'berlin'];
+                city = knownCities.find(c => q.includes(c));
+            }
+
+            const tempMatch = q.match(/(\d+(?:\.\d+)?)\s*(?:degrees?\s*)?(?:°\s*)?(f|c|fahrenheit|celsius)?/);
+            let threshold = tempMatch ? parseFloat(tempMatch[1]) : null;
+
+            const isAbove = q.match(/(above|over|exceed|higher|at least|hit|reach)/);
+            const isBelow = q.match(/(below|under|lower|drop|fall)/);
+
+            return {
+                city: city ? city.replace(/\b\w/g, c => c.toUpperCase()) : null,
+                threshold,
+                isAbove: !!isAbove,
+                isBelow: !!isBelow,
+            };
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // SERVICIOS API (OPEN-METEO & POLYMARKET)
+        // ═══════════════════════════════════════════════════════════════
+
+        // Súper fetch de observación en vivo (Rápido, corre cada 1 min)
+        async function fetchLiveWeather(cityName, coords) {
+            try {
+                const liveUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m&temperature_unit=fahrenheit&timezone=${coords.tz}`;
+                const liveRes = await fetch(liveUrl);
+                if (liveRes.ok) {
+                    const liveData = await liveRes.json();
+                    if (!state.weatherData[cityName]) state.weatherData[cityName] = { models: {}, live: null };
+                    state.weatherData[cityName].live = liveData.current;
+                    
+                    const liveAgent = state.agents.find(a => a.id === 'Agent-LiveObs');
+                    if (liveAgent) {
+                        liveAgent.status = 'active';
+                        liveAgent.lastUpdate = new Date().toISOString();
+                        liveAgent.predictions[cityName] = liveData.current;
+                        liveAgent.confidence = 1.0;
+                    }
+                }
+            } catch (err) { console.error(`Live fetch error:`, err.message); }
+        }
+
+        // Fetch de modelos pesados (Corre cada 5 min)
+        async function fetchWeatherModels(cityName, coords) {
+            const modelsToFetch = ['gfs_global', 'ecmwf_ifs04', 'icon_seamless', 'jma_seamless']; 
+            for (const modelId of modelsToFetch) {
+                try {
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&hourly=temperature_2m&timezone=${coords.tz}&models=${modelId}&forecast_days=3&temperature_unit=fahrenheit`;
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    
+                    const data = await res.json();
+                    const temps = data.hourly?.temperature_2m || [];
+                    const validTemps = temps.filter(t => t != null && t > -50 && t < 160);
+
+                    if (validTemps.length > 0) {
+                        if (!state.weatherData[cityName]) state.weatherData[cityName] = { models: {}, live: null };
+                        state.weatherData[cityName].models[modelId] = {
+                            high: Math.max(...validTemps.slice(0, 24)),
+                            low: Math.min(...validTemps.slice(0, 24))
+                        };
+
+                        const agentId = WEATHER_MODELS.find(m => m.id === modelId)?.agent;
+                        const agent = state.agents.find(a => a.id === agentId);
+                        if (agent) {
+                            agent.status = 'active';
+                            agent.lastUpdate = new Date().toISOString();
+                            agent.predictions[cityName] = { high: state.weatherData[cityName].models[modelId].high };
+                            agent.confidence = validTemps.length / 24;
+                        }
+                    }
+                } catch (err) { console.error(`Model error:`, err.message); }
+            }
+        }
+
+        async function fetchPolymarketWeather() {
+            const urls = [
+                'https://gamma-api.polymarket.com/markets?limit=100&active=true&tag_slug=weather',
+                'https://gamma-api.polymarket.com/markets?limit=100&active=true&query=temperature'
+            ];
+
+            const allMarkets = [];
+            const seenIds = new Set();
+
+            for (const url of urls) {
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    const markets = Array.isArray(data) ? data : (data.markets || []);
+                    
+                    for (const m of markets) {
+                        if (seenIds.has(m.id) || !m.question || !m.endDate) continue; // Ignorar sin fecha
+                        seenIds.add(m.id);
+                        const q = m.question.toLowerCase();
+                        
+                        if (q.includes('temp') || q.includes('weather') || q.includes('°f') || q.includes('degree')) {
+                            const parsed = parseMarketQuestion(m.question);
+                            if (parsed.city && parsed.threshold) {
+                                
+                                await geocodeCity(parsed.city);
+
+                                let prices = [];
+                                try {
+                                    prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : (m.outcomePrices || []);
+                                } catch (e) {}
+
+                                allMarkets.push({
+                                    id: m.id,
+                                    question: m.question,
+                                    city: parsed.city,
+                                    threshold: parsed.threshold,
+                                    isAbove: parsed.isAbove,
+                                    prices: prices.map(p => parseFloat(p)),
+                                    endDate: m.endDate,
+                                    url: m.slug ? `https://polymarket.com/event/${m.slug}` : null,
+                                });
+                            }
+                        }
+                    }
+                } catch (e) { console.error('Polymarket fetch error:', e.message); }
+            }
+
+            state.markets = allMarkets;
+            const polyAgent = state.agents.find(a => a.id === 'Agent-Polymarket');
+            if (polyAgent) {
+                polyAgent.status = 'active';
+                polyAgent.lastUpdate = new Date().toISOString();
+                polyAgent.predictions = { marketCount: allMarkets.length };
+                polyAgent.confidence = allMarkets.length > 0 ? 0.9 : 0;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // MOTOR DE ESTRATEGIA (EL EDGE)
+        // ═══════════════════════════════════════════════════════════════
+
+        function generateSignals() {
+            const signals = [];
+
+            for (const market of state.markets) {
+                const cityData = state.weatherData[market.city];
+                if (!cityData) continue;
+
+                const liveTemp = cityData.live?.temperature_2m;
+                const models = cityData.models;
+                
+                let modelHighs = [];
+                for (const [id, data] of Object.entries(models)) {
+                    if (data.high != null) modelHighs.push(data.high);
+                }
+                const avgModelHigh = modelHighs.length ? modelHighs.reduce((a,b)=>a+b,0)/modelHighs.length : null;
+                
+                const hoursToClose = (new Date(market.endDate).getTime() - Date.now()) / 3600000;
+
+                // Ignorar mercados que ya cerraron o cerrarán en más de 12h (nos enfocamos en el dinero seguro)
+                if (hoursToClose < 0 || hoursToClose > 12) continue;
+
+                let liveDelta = null;
+                let bucketRisk = 'low';
+                
+                if (liveTemp != null && market.threshold != null) {
+                    liveDelta = Math.abs(liveTemp - market.threshold);
+                    
+                    if (liveDelta < 1.5) bucketRisk = 'extreme';
+                    else if (liveDelta < 3.0) bucketRisk = 'high';
+                    else if (liveDelta < 6.0) bucketRisk = 'medium';
+                }
+
+                const marketProb = market.prices[0] || 0;
+                let action = 'HOLD';
+                let confidence = 0;
+                let reasoning = [];
+
+                // ESTRATEGIA principal: Mercado cierra pronto y la temperatura en vivo ya cruzó o está a punto
+                if (hoursToClose < 4 && liveDelta !== null) {
+                    if (market.isAbove && liveTemp >= market.threshold - 0.5) {
+                        action = 'BUY YES';
+                        confidence = 0.98;
+                        reasoning.push(`🔥 LIVE BUCKET: Temp real (${liveTemp.toFixed(1)}°F) ya superó el objetivo (${market.threshold}°F). Cierra en ${hoursToClose.toFixed(1)}h.`);
+                    } else if (market.isBelow && liveTemp <= market.threshold + 0.5) {
+                        action = 'BUY YES';
+                        confidence = 0.98;
+                        reasoning.push(`🧊 LIVE BUCKET: Temp real (${liveTemp.toFixed(1)}°F) ya bajó del objetivo (${market.threshold}°F). Cierra en ${hoursToClose.toFixed(1)}h.`);
+                    } else if (market.isAbove && liveTemp < market.threshold - 2.0) {
+                        action = 'BUY NO';
+                        confidence = 0.90;
+                        reasoning.push(`❄️ LIVE BUCKET: Temp real (${liveTemp.toFixed(1)}°F) está muy por debajo de (${market.threshold}°F) y no da tiempo a subir.`);
+                    } else if (market.isBelow && liveTemp > market.threshold + 2.0) {
+                        action = 'BUY NO';
+                        confidence = 0.90;
+                        reasoning.push(`☀️ LIVE BUCKET: Temp real (${liveTemp.toFixed(1)}°F) está muy por encima de (${market.threshold}°F) y no da tiempo a bajar.`);
+                    }
+                }
+
+                if (action !== 'HOLD') {
+                    signals.push({
+                        marketId: market.id,
+                        question: market.question,
+                        city: market.city,
+                        liveTemp: liveTemp?.toFixed(1),
+                        threshold: market.threshold,
+                        liveDelta: liveDelta?.toFixed(2),
+                        hoursToClose: hoursToClose.toFixed(2),
+                        bucketRisk,
+                        action,
+                        confidence,
+                        marketProb,
+                        reasoning,
+                        marketUrl: market.url,
+                    });
+
+                    if (bucketRisk === 'extreme' && hoursToClose < 4) {
+                        addAlert({
+                            type: 'bucket-cross',
+                            level: 'critical',
+                            city: market.city,
+                            message: `🚨 ${market.city}: ${liveTemp.toFixed(1)}°F vs ${market.threshold}°F (${liveDelta.toFixed(1)}°F diff). Cierra en ${hoursToClose.toFixed(1)}h. ¡Ve a Polymarket ahora!`,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }
+            }
+
+            signals.sort((a, b) => b.confidence - a.confidence);
+            state.signals = signals;
+
+            const stratAgent = state.agents.find(a => a.id === 'Agent-Strategy');
+            if (stratAgent) {
+                stratAgent.status = 'active';
+                stratAgent.lastUpdate = new Date().toISOString();
+                stratAgent.predictions = { signalCount: signals.length };
+            }
+            
+            renderSignals(signals);
+            renderAgents();
+            updateStats();
+        }
+
+        function addAlert(alert) {
+            const recent = state.alerts.find(a => a.type === alert.type && a.city === alert.city && (new Date() - new Date(a.timestamp)) < 300000);
+            if (recent) return;
+            state.alerts.unshift(alert);
+            if (state.alerts.length > 20) state.alerts = state.alerts.slice(0, 20);
+            renderAlerts(state.alerts);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // LOOP PRINCIPAL Y UI
+        // ═══════════════════════════════════════════════════════════════
+
+        async function updateModelsLoop() {
+            console.log("Actualizando modelos meteorológicos (pesado)...");
+            for (const [cityName, coords] of Object.entries(state.activeLocations)) {
+                await fetchWeatherModels(cityName, coords);
+            }
+            state.lastUpdate = new Date().toISOString();
+            generateSignals();
+        }
+
+        async function updateLiveLoop() {
+            // console.log("Actualizando temperatura en vivo (rápido)...");
+            for (const [cityName, coords] of Object.entries(state.activeLocations)) {
+                await fetchLiveWeather(cityName, coords);
+            }
+            generateSignals(); // Recalcular señales cada vez que el vivo actualiza
+        }
+
+        function updateStats() {
+            const activeAgents = state.agents.filter(a => a.status === 'active').length;
+            document.getElementById('stat-agents').textContent = `${activeAgents}/${state.agents.length}`;
+            document.getElementById('stat-markets').textContent = state.markets.length;
+            document.getElementById('stat-signals').textContent = state.signals.length;
+            document.getElementById('stat-update').textContent = new Date().toLocaleTimeString();
+        }
+
+        function renderAgents() {
+            const container = document.getElementById('agents-container');
+            container.innerHTML = state.agents.map(a => `
+                <div class="agent-card ${a.status}">
+                    <div class="agent-name">
+                        <span class="agent-status-dot"></span>
+                        ${a.country} ${a.name.replace('Agent-', '')}
+                    </div>
+                    <div class="agent-conf">${Math.round((a.confidence || 0) * 100)}%</div>
+                </div>
+            `).join('');
+        }
+
+        function renderSignals(signals) {
+            const container = document.getElementById('signals-container');
+            
+            if (!signals || signals.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-dim); margin-top: 50px;">Buscando oportunidades de cruce de bucket...<br>Espere a que los agentes detecten ventajas.</div>';
+                return;
+            }
+
+            container.innerHTML = signals.map(sig => {
+                const actionClass = sig.action === 'HOLD' ? 'hold' : (sig.bucketRisk === 'extreme' ? 'extreme' : 'buy');
+                const actionBadge = sig.action === 'BUY YES' ? 'action-buy-yes' : (sig.action === 'BUY NO' ? 'action-buy-no' : 'action-hold');
+                
+                const liveTemp = parseFloat(sig.liveTemp) || 0;
+                const threshold = sig.threshold || 0;
+                const range = 20;
+                const minTemp = threshold - range;
+                const maxTemp = threshold + range;
+                const livePercent = Math.max(0, Math.min(100, ((liveTemp - minTemp) / (maxTemp - minTemp)) * 100));
+                const thresholdPercent = ((threshold - minTemp) / (maxTemp - minTemp)) * 100;
+
+                return `
+                <div class="signal-card ${actionClass}">
+                    <div class="signal-header">
+                        <div class="signal-city">📍 ${sig.city}</div>
+                        <div class="signal-action ${actionBadge}">${sig.action} (${Math.round(sig.confidence*100)}%)</div>
+                    </div>
+
+                    <div class="bucket-meter">
+                        <div class="meter-label">
+                            <span>Live: <strong style="color:var(--accent-blue)">${sig.liveTemp || 'N/A'}°F</strong></span>
+                            <span>Target: <strong style="color:var(--accent-orange)">${sig.threshold}°F</strong></span>
+                        </div>
+                        <div class="meter-bar">
+                            <div class="meter-threshold" style="left: ${thresholdPercent}%;"></div>
+                            <div class="meter-fill" style="width: ${livePercent}%; background: ${sig.action.includes('YES') ? 'var(--accent-green)' : 'var(--accent-blue)'};"></div>
+                        </div>
+                    </div>
+
+                    <div class="signal-details">
+                        <div class="detail-item">
+                            <label>Delta al Bucket</label>
+                            <span style="color: ${parseFloat(sig.liveDelta) < 2 ? 'var(--accent-red)' : 'var(--text-main)'}">${sig.liveDelta || 'N/A'}°F</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Tiempo al Cierre</label>
+                            <span style="color: ${parseFloat(sig.hoursToClose) < 4 ? 'var(--accent-orange)' : 'var(--text-main)'}">${sig.hoursToClose}h</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Prob. Mercado</label>
+                            <span>${Math.round(sig.marketProb*100)}%</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Riesgo Bucket</label>
+                            <span class="risk-badge risk-${sig.bucketRisk}">${sig.bucketRisk}</span>
+                        </div>
+                    </div>
+
+                    <div class="signal-reason">
+                        ${sig.reasoning.map(r => `<div>⚡ ${r}</div>`).join('')}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderAlerts(alerts) {
+            const container = document.getElementById('alerts-container');
+            if (!alerts || alerts.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-dim);">Sin alertas críticas</div>';
+                return;
+            }
+            container.innerHTML = alerts.map(a => `
+                <div class="alert-item ${a.level}">
+                    <div class="alert-time">${new Date(a.timestamp).toLocaleTimeString()}</div>
+                    <div class="alert-msg">${a.message}</div>
+                </div>
+            `).join('');
+        }
+
+        // Inicialización
+        initAgents();
+        
+        // Ejecución inicial
+        (async () => {
+            await fetchPolymarketWeather();
+            await updateModelsLoop();
+            await updateLiveLoop(); // Primer pase de vivo
+            
+            // Loops de actualización en el navegador
+            setInterval(fetchPolymarketWeather, 2 * 60 * 1000); // Polymarket cada 2 min
+            setInterval(updateModelsLoop, 10 * 60 * 1000); // Modelos cada 10 min
+            setInterval(updateLiveLoop, 60 * 1000); // TEMP EN VIVO CADA 60 SEGUNDOS (Sniper Mode)
+            setInterval(generateSignals, 10 * 1000); // Recalcular señales cada 10 seg por si cambian precios
+        })();
+    </script>
+</body>
+</html>
